@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>VeritasAI - Truth Grounded RAG</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background: radial-gradient(circle at top,#0f172a,#020617);
+color:white;
+}
+
+.container{
+display:flex;
+height:100vh;
+}
+
+/* Sidebar */
+
+.sidebar{
+width:260px;
+background:rgba(255,255,255,0.05);
+backdrop-filter:blur(10px);
+padding:20px;
+border-right:1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar h2{
+margin-top:0;
+}
+
+.new-chat{
+background:#7c3aed;
+padding:10px;
+border-radius:8px;
+text-align:center;
+cursor:pointer;
+margin-bottom:20px;
+}
+
+.history-item{
+background:rgba(255,255,255,0.06);
+padding:10px;
+margin-top:10px;
+border-radius:8px;
+cursor:pointer;
+}
+
+/* Chat */
+
+.chat-area{
+flex:1;
+display:flex;
+flex-direction:column;
+}
+
+.chat-box{
+flex:1;
+overflow-y:auto;
+padding:30px;
+}
+
+.message{
+margin-bottom:20px;
+padding:15px;
+border-radius:12px;
+max-width:60%;
+animation:fadeIn .2s ease;
+}
+
+.user{
+background:#7c3aed;
+margin-left:auto;
+}
+
+.bot{
+background:rgba(255,255,255,0.08);
+}
+
+/* Input */
+
+.input-area{
+display:flex;
+gap:10px;
+padding:20px;
+border-top:1px solid rgba(255,255,255,0.1);
+}
+
+input[type=text]{
+flex:1;
+padding:12px;
+border-radius:8px;
+border:none;
+}
+
+button{
+padding:12px 18px;
+border:none;
+border-radius:8px;
+background:#7c3aed;
+color:white;
+cursor:pointer;
+}
+
+.upload-btn{
+font-size:20px;
+cursor:pointer;
+}
+
+/* Evidence */
+
+.evidence-panel{
+width:320px;
+background:rgba(255,255,255,0.04);
+border-left:1px solid rgba(255,255,255,0.1);
+padding:20px;
+overflow-y:auto;
+}
+
+.evidence-box{
+background:rgba(255,255,255,0.05);
+padding:10px;
+border-radius:8px;
+margin-bottom:10px;
+}
+
+/* Citation */
+
+.citation{
+color:#a78bfa;
+cursor:pointer;
+font-weight:bold;
+}
+
+.citation:hover{
+text-decoration:underline;
+}
+
+/* Tooltip */
+
+.tooltip{
+position:absolute;
+background:#111;
+padding:8px;
+border-radius:6px;
+font-size:12px;
+display:none;
+z-index:100;
+}
+
+/* Trust score */
+
+.bar{
+height:6px;
+background:#222;
+border-radius:4px;
+margin-top:4px;
+}
+
+.bar-fill{
+height:6px;
+background:#7c3aed;
+border-radius:4px;
+}
+
+@keyframes fadeIn{
+from{opacity:0;transform:translateY(6px);}
+to{opacity:1;transform:translateY(0);}
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- Sidebar -->
+
+<div class="sidebar">
+
+<h2>VeritasAI</h2>
+
+<div class="new-chat" onclick="newChat()">+ New Chat</div>
+
+<div id="history"></div>
+
+</div>
+
+
+<!-- Chat -->
+
+<div class="chat-area">
+
+<div class="chat-box" id="chat"></div>
+
+<div class="input-area">
+
+<label class="upload-btn">
+📎
+<input type="file" id="pdfFile" hidden onchange="uploadPDF()">
+</label>
+
+<input type="text" id="question" placeholder="Ask anything...">
+
+<button onclick="askQuestion()">Send</button>
+
+</div>
+
+</div>
+
+
+<!-- Evidence Panel -->
+
+<div class="evidence-panel">
+
+<h3>Evidence</h3>
+
+<div id="evidenceContent">
+Click a citation to view evidence
+</div>
+
+</div>
+
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+
+let chatSessions={}
+let currentChat=null
+let currentSources=[]
+
+
+/* New Chat */
+
+function newChat(){
+
+currentChat=Date.now()
+
+chatSessions[currentChat]={
+title:null,
+messages:[]
+}
+
+document.getElementById("chat").innerHTML=""
+
+}
+
+
+/* Upload PDF */
+
+async function uploadPDF(){
+
+let fileInput=document.getElementById("pdfFile")
+
+let formData=new FormData()
+
+formData.append("file",fileInput.files[0])
+
+let response=await fetch("/upload-pdf/",{
+method:"POST",
+body:formData
+})
+
+let data=await response.json()
+
+alert(data.message)
+
+}
+
+
+/* Ask Question */
+
+async function askQuestion(){
+
+let question=document.getElementById("question").value
+
+if(!question) return
+
+if(!currentChat) newChat()
+
+addMessage(question,"user")
+
+saveMessage(question,"user")
+
+document.getElementById("question").value=""
+
+let loading=addMessage("Thinking...","bot")
+
+let response=await fetch("/ask/",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({question:question})
+})
+
+let data=await response.json()
+
+loading.remove()
+
+currentSources=data.sources
+
+let botMessage = addMessage("", "bot")
+
+streamText(botMessage, data.answer)
+
+setTimeout(()=>{
+
+let trust = (data.faithfulness_score * 100).toFixed(0)
+
+let finalHTML = `
+
+${addCitations(data.answer)}
+
+<div style="margin-top:10px;font-size:12px">
+
+Trust Score: ${trust}%
+
+<div class="bar">
+<div class="bar-fill" style="width:${trust}%"></div>
+</div>
+
+Alignment Score: ${data.alignment_score}
+
+</div>
+
+`
+
+botMessage.innerHTML = finalHTML
+
+}, data.answer.length * 25)
+
+setTimeout(()=>{botMessage.innerHTML += extra}, answerText.length*25)
+
+
+saveMessage(answerText,"bot")
+
+
+if(!chatSessions[currentChat].title){
+
+chatSessions[currentChat].title=generateTitle(question)
+
+updateSidebar()
+
+}
+
+}
+
+
+/* Streaming */
+
+function streamText(element,text){
+
+let words=text.split(" ")
+
+let i=0
+
+let interval=setInterval(()=>{
+
+element.innerHTML+=words[i]+" "
+
+scrollChat()
+
+i++
+
+if(i>=words.length){
+clearInterval(interval)
+}
+
+},25)
+
+}
+
+
+/* Generate title */
+
+function generateTitle(question){
+
+let words=question.split(" ")
+
+return words.slice(0,4).join(" ")+"..."
+
+}
+
+
+/* Save message */
+
+function saveMessage(text,type){
+
+chatSessions[currentChat].messages.push({
+text:text,
+type:type
+})
+
+}
+
+
+/* Add message */
+
+function addMessage(text,type){
+
+let div=document.createElement("div")
+
+div.className="message "+type
+
+div.innerHTML=text
+
+document.getElementById("chat").appendChild(div)
+
+scrollChat()
+
+return div
+
+}
+
+
+/* Scroll */
+
+function scrollChat(){
+
+let chat=document.getElementById("chat")
+
+chat.scrollTop=chat.scrollHeight
+
+}
+
+
+/* Sidebar */
+
+function updateSidebar(){
+
+let history=document.getElementById("history")
+
+history.innerHTML=""
+
+Object.keys(chatSessions).forEach(id=>{
+
+let chat=chatSessions[id]
+
+if(!chat.title) return
+
+let div=document.createElement("div")
+
+div.className="history-item"
+
+div.innerText=chat.title
+
+div.onclick=()=>loadChat(id)
+
+history.appendChild(div)
+
+})
+
+}
+
+
+/* Load chat */
+
+function loadChat(id){
+
+currentChat=id
+
+let chat=chatSessions[id]
+
+let chatBox=document.getElementById("chat")
+
+chatBox.innerHTML=""
+
+chat.messages.forEach(msg=>{
+addMessage(msg.text,msg.type)
+})
+
+}
+
+
+/* Citations */
+
+function addCitations(text){
+
+let sentences=text.split(". ")
+
+let result=""
+
+sentences.forEach((s,i)=>{
+
+if(s.trim().length>0){
+
+result+=`${s}. <span class="citation"
+onclick="showEvidence(${i})"
+onmouseover="showTooltip(event,${i})"
+onmouseout="hideTooltip()">[${i+1}]</span> `
+
+}
+
+})
+
+return result
+
+}
+
+
+/* Evidence */
+
+function showEvidence(index){
+
+let src=currentSources[index]
+
+if(!src) return
+
+let html=`
+
+<div class="evidence-box">
+
+<b>${src.document}</b> (page ${src.page})
+
+<iframe
+src="${src.link}"
+width="100%"
+height="400"
+style="border:none;margin-top:10px">
+</iframe>
+
+</div>
+
+`
+
+document.getElementById("evidenceContent").innerHTML=html
+
+}
+
+
+/* Tooltip */
+
+function showTooltip(event,index){
+
+let src=currentSources[index]
+
+if(!src) return
+
+let tooltip=document.getElementById("tooltip")
+
+tooltip.innerHTML=`<b>${src.document}</b><br>Page ${src.page}`
+
+tooltip.style.display="block"
+
+tooltip.style.left=event.pageX+"px"
+
+tooltip.style.top=event.pageY+"px"
+
+}
+
+function hideTooltip(){
+
+document.getElementById("tooltip").style.display="none"
+
+}
+
+
+/* Enter */
+
+document.getElementById("question").addEventListener("keypress",function(e){
+if(e.key==="Enter") askQuestion()
+})
+
+</script>
+
+</body>
+</html>
