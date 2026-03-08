@@ -510,11 +510,12 @@ let src=currentSources[index]
 
 if(!src) return
 
-let html=`
+let html = `
 
 <div class="evidence-box">
 
-<b>${src.document}</b> (page ${src.page})
+<b>${src.document}</b><br>
+Page ${src.page}
 
 <iframe
 src="${src.link}"
@@ -527,10 +528,9 @@ style="border:none;margin-top:10px">
 
 `
 
-document.getElementById("evidenceContent").innerHTML=html
+document.getElementById("evidenceContent").innerHTML = html
 
 }
-
 
 /* Tooltip */
 
