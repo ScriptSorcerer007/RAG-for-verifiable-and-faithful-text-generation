@@ -230,9 +230,9 @@ Click a citation to view evidence
 
 <script>
 
-let chatSessions={}
-let currentChat=null
-let currentSources=[]
+let chatSessions = JSON.parse(localStorage.getItem("chats")) || {}
+let currentChat = null
+let currentSources = []
 
 
 /* New Chat */
