@@ -127,4 +127,4 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 #Gemini api key 
-GEMINI_API_KEY = "AIzaSyBzeeadv89NyoYBuUuGw2EUdwZfyhzSCkc"
+GEMINI_API_KEY = "AIzaSyCORZDu0NZKcMvKFAWHSltdGvC93LZpnw4"
