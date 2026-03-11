@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>VeritasAI - Truth Grounded RAG</title>
 
 <style>
@@ -10,7 +11,10 @@ margin:0;
 font-family:Arial;
 background: radial-gradient(circle at top,#0f172a,#020617);
 color:white;
+overflow:hidden;
 }
+
+/* Layout */
 
 .container{
 display:flex;
@@ -21,10 +25,11 @@ height:100vh;
 
 .sidebar{
 width:260px;
-background:rgba(255,255,255,0.05);
-backdrop-filter:blur(10px);
+background:rgba(255,255,255,0.08);
+backdrop-filter: blur(18px) saturate(180%);
 padding:20px;
-border-right:1px solid rgba(255,255,255,0.1);
+border-right:1px solid rgba(255,255,255,0.15);
+box-shadow:0 8px 32px rgba(0,0,0,0.3);
 }
 
 .sidebar h2{
@@ -32,12 +37,18 @@ margin-top:0;
 }
 
 .new-chat{
-background:#7c3aed;
+background:linear-gradient(135deg,#7c3aed,#5b21b6);
 padding:10px;
-border-radius:8px;
+border-radius:10px;
 text-align:center;
 cursor:pointer;
 margin-bottom:20px;
+transition:.2s;
+}
+
+.new-chat:hover{
+transform:translateY(-2px);
+box-shadow:0 6px 18px rgba(124,58,237,.6);
 }
 
 .history-item{
@@ -46,14 +57,22 @@ padding:10px;
 margin-top:10px;
 border-radius:8px;
 cursor:pointer;
+transition:.2s;
 }
 
-/* Chat */
+.history-item:hover{
+background:#7c3aed;
+transform:translateX(4px);
+}
+
+/* Chat Area */
 
 .chat-area{
 flex:1;
 display:flex;
 flex-direction:column;
+background:rgba(255,255,255,0.02);
+backdrop-filter:blur(12px);
 }
 
 .chat-box{
@@ -62,24 +81,29 @@ overflow-y:auto;
 padding:30px;
 }
 
+/* Messages */
+
 .message{
 margin-bottom:20px;
-padding:15px;
-border-radius:12px;
-max-width:60%;
-animation:fadeIn .2s ease;
+padding:16px;
+border-radius:14px;
+max-width:65%;
+animation:fadeIn .25s ease;
+backdrop-filter:blur(10px);
+box-shadow:0 8px 20px rgba(0,0,0,0.3);
 }
 
 .user{
-background:#7c3aed;
+background:linear-gradient(135deg,#7c3aed,#6d28d9);
 margin-left:auto;
 }
 
 .bot{
-background:rgba(255,255,255,0.08);
+background:rgba(255,255,255,0.07);
+border:1px solid rgba(255,255,255,0.1);
 }
 
-/* Input */
+/* Input Area */
 
 .input-area{
 display:flex;
@@ -91,17 +115,26 @@ border-top:1px solid rgba(255,255,255,0.1);
 input[type=text]{
 flex:1;
 padding:12px;
-border-radius:8px;
+border-radius:10px;
 border:none;
+outline:none;
+background:rgba(255,255,255,0.08);
+color:white;
 }
 
 button{
 padding:12px 18px;
 border:none;
-border-radius:8px;
-background:#7c3aed;
+border-radius:10px;
+background:linear-gradient(135deg,#7c3aed,#5b21b6);
 color:white;
 cursor:pointer;
+transition:all .25s ease;
+}
+
+button:hover{
+transform:translateY(-2px);
+box-shadow:0 6px 18px rgba(124,58,237,.5);
 }
 
 .upload-btn{
@@ -109,33 +142,39 @@ font-size:20px;
 cursor:pointer;
 }
 
-/* Evidence */
+/* Evidence Panel */
 
 .evidence-panel{
 width:320px;
-background:rgba(255,255,255,0.04);
-border-left:1px solid rgba(255,255,255,0.1);
+background:rgba(255,255,255,0.06);
+backdrop-filter:blur(20px);
+border-left:1px solid rgba(255,255,255,0.15);
 padding:20px;
 overflow-y:auto;
 }
 
 .evidence-box{
 background:rgba(255,255,255,0.05);
-padding:10px;
-border-radius:8px;
-margin-bottom:10px;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
 }
 
-/* Citation */
+/* Citations */
 
 .citation{
-color:#a78bfa;
+color:#c4b5fd;
 cursor:pointer;
 font-weight:bold;
+padding:2px 6px;
+border-radius:6px;
+transition:all .2s;
 }
 
 .citation:hover{
-text-decoration:underline;
+background:#7c3aed;
+color:white;
+box-shadow:0 0 10px #7c3aed;
 }
 
 /* Tooltip */
@@ -150,7 +189,7 @@ display:none;
 z-index:100;
 }
 
-/* Trust score */
+/* Trust Score */
 
 .bar{
 height:6px;
@@ -165,8 +204,41 @@ background:#7c3aed;
 border-radius:4px;
 }
 
+/* Modal Evidence */
+
+.modal{
+display:none;
+position:fixed;
+z-index:1000;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+backdrop-filter:blur(6px);
+}
+
+.modal-content{
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(20px);
+margin:6% auto;
+padding:20px;
+width:600px;
+border-radius:16px;
+box-shadow:0 20px 60px rgba(0,0,0,0.5);
+animation:fadeIn .3s ease;
+}
+
+.close{
+float:right;
+font-size:22px;
+cursor:pointer;
+}
+
+/* Animations */
+
 @keyframes fadeIn{
-from{opacity:0;transform:translateY(6px);}
+from{opacity:0;transform:translateY(8px);}
 to{opacity:1;transform:translateY(0);}
 }
 
@@ -189,7 +261,6 @@ to{opacity:1;transform:translateY(0);}
 
 </div>
 
-
 <!-- Chat -->
 
 <div class="chat-area">
@@ -201,6 +272,15 @@ to{opacity:1;transform:translateY(0);}
 <label class="upload-btn">
 📎
 <input type="file" id="pdfFile" hidden onchange="uploadPDF()">
+<div id="uploadProgress" style="display:none;margin-top:10px">
+    <div id="uploadText">Uploading...</div>
+
+    <div style="height:8px;background:#222;border-radius:6px;margin-top:6px">
+        <div id="progressBar"
+             style="height:8px;width:0%;background:#7c3aed;border-radius:6px">
+        </div>
+    </div>
+</div>
 </label>
 
 <input type="text" id="question" placeholder="Ask anything...">
@@ -211,10 +291,10 @@ to{opacity:1;transform:translateY(0);}
 
 </div>
 
-
 <!-- Evidence Panel -->
 
 <div class="evidence-panel">
+
 <h3>Evidence</h3>
 
 <div id="evidenceContent">
@@ -225,7 +305,23 @@ Click a citation to view evidence
 
 </div>
 
+<!-- Tooltip -->
+
 <div id="tooltip" class="tooltip"></div>
+
+<!-- Evidence Modal -->
+
+<div id="evidenceModal" class="modal">
+
+<div class="modal-content">
+
+<span class="close" onclick="closeEvidence()">×</span>
+
+<div id="modalBody"></div>
+
+</div>
+
+</div>
 
 <script>
 
@@ -233,46 +329,73 @@ let chatSessions = JSON.parse(localStorage.getItem("chats")) || {}
 let currentChat = null
 let currentSources = []
 
-
-/* New Chat */
-
 function newChat(){
 
 currentChat=Date.now()
 
-chatSessions[currentChat]={
-title:null,
-messages:[]
-}
+chatSessions[currentChat]={title:null,messages:[]}
 
 document.getElementById("chat").innerHTML=""
 
 }
 
-
-/* Upload PDF */
+/* Upload */
 
 async function uploadPDF(){
 
 let fileInput=document.getElementById("pdfFile")
 
-let formData=new FormData()
+if(!fileInput.files.length) return
 
+let progressBox=document.getElementById("uploadProgress")
+let progressBar=document.getElementById("progressBar")
+let progressText=document.getElementById("uploadText")
+
+progressBox.style.display="block"
+
+function setProgress(p,text){
+progressBar.style.width=p+"%"
+progressText.innerText=text
+}
+
+setProgress(10,"Uploading PDF...")
+
+let formData=new FormData()
 formData.append("file",fileInput.files[0])
+
+setProgress(20,"Sending file to server...")
 
 let response=await fetch("/upload-pdf/",{
 method:"POST",
 body:formData
 })
 
+setProgress(40,"Extracting text...")
+
+await new Promise(r=>setTimeout(r,400))
+
+setProgress(60,"Chunking document...")
+
+await new Promise(r=>setTimeout(r,400))
+
+setProgress(80,"Creating embeddings...")
+
+await new Promise(r=>setTimeout(r,400))
+
+setProgress(95,"Building vector index...")
+
 let data=await response.json()
 
+setProgress(100,"Document ready!")
+
+setTimeout(()=>{
+progressBox.style.display="none"
 alert(data.message)
+},800)
 
 }
 
-
-/* Ask Question */
+/* Ask */
 
 async function askQuestion(){
 
@@ -364,30 +487,6 @@ clearInterval(interval)
 
 }
 
-
-/* Generate title */
-
-function generateTitle(question){
-
-let words=question.split(" ")
-
-return words.slice(0,4).join(" ")+"..."
-
-}
-
-
-/* Save message */
-
-function saveMessage(text,type){
-
-chatSessions[currentChat].messages.push({
-text:text,
-type:type
-})
-
-}
-
-
 /* Add message */
 
 function addMessage(text,type){
@@ -406,9 +505,6 @@ return div
 
 }
 
-
-/* Scroll */
-
 function scrollChat(){
 
 let chat=document.getElementById("chat")
@@ -417,8 +513,99 @@ chat.scrollTop=chat.scrollHeight
 
 }
 
+function saveMessage(text,type){
+
+chatSessions[currentChat].messages.push({text:text,type:type})
+
+}
+
+/* Citations */
+
+function addCitations(text){
+
+let sentences=text.split(". ")
+
+let result=""
+
+sentences.forEach((s,i)=>{
+
+if(s.trim().length>0){
+
+result+=`${s}. <span class="citation"
+onclick="showEvidence(${i})"
+onmouseover="showTooltip(event,${i})"
+onmouseout="hideTooltip()">[${i+1}]</span> `
+
+}
+
+})
+
+return result
+
+}
+
+/* Evidence Modal */
+
+function showEvidence(index){
+
+let src=currentSources[index]
+
+if(!src) return
+
+let html=`
+
+<h3>${src.document}</h3>
+
+<p><b>Page:</b> ${src.page}</p>
+
+<p><b>Evidence Chunk:</b></p>
+
+<p>${src.chunk}</p>
+
+<iframe src="${src.link}" width="100%" height="400" style="border:none;border-radius:10px"></iframe>
+
+`
+
+document.getElementById("modalBody").innerHTML=html
+
+document.getElementById("evidenceModal").style.display="block"
+
+}
+
+function closeEvidence(){
+document.getElementById("evidenceModal").style.display="none"
+}
+
+/* Tooltip */
+
+function showTooltip(event,index){
+
+let src=currentSources[index]
+
+if(!src) return
+
+let tooltip=document.getElementById("tooltip")
+
+tooltip.innerHTML=`<b>${src.document}</b><br>Page ${src.page}`
+
+tooltip.style.display="block"
+
+tooltip.style.left=event.pageX+"px"
+
+tooltip.style.top=event.pageY+"px"
+
+}
+
+function hideTooltip(){
+document.getElementById("tooltip").style.display="none"
+}
 
 /* Sidebar */
+
+function generateTitle(question){
+let words=question.split(" ")
+return words.slice(0,4).join(" ")+"..."
+}
 
 function updateSidebar(){
 
@@ -446,9 +633,6 @@ history.appendChild(div)
 
 }
 
-
-/* Load chat */
-
 function loadChat(id){
 
 currentChat=id
@@ -464,95 +648,6 @@ addMessage(msg.text,msg.type)
 })
 
 }
-
-
-/* Citations */
-
-function addCitations(text){
-
-let sentences=text.split(". ")
-
-let result=""
-
-sentences.forEach((s,i)=>{
-
-if(s.trim().length>0){
-
-result+=`${s}. <span class="citation"
-onclick="showEvidence(${i})"
-onmouseover="showTooltip(event,${i})"
-onmouseout="hideTooltip()">[${i+1}]</span> `
-
-}
-
-})
-
-return result
-
-}
-
-
-/* Evidence */
-
-function showEvidence(index){
-
-let src=currentSources[index]
-
-if(!src) return
-
-let html = `
-
-<div class="evidence-box">
-
-<b>${src.document}</b><br>
-Page ${src.page}
-
-<div style="margin-top:10px;font-size:13px">
-<b>Evidence Chunk:</b>
-<br>
-${src.chunk}
-</div>
-
-<iframe
-src="${src.link}"
-width="100%"
-height="400"
-style="border:none;margin-top:10px">
-</iframe>
-
-</div>
-
-`
-
-document.getElementById("evidenceContent").innerHTML = html
-
-}
-/* Tooltip */
-
-function showTooltip(event,index){
-
-let src=currentSources[index]
-
-if(!src) return
-
-let tooltip=document.getElementById("tooltip")
-
-tooltip.innerHTML=`<b>${src.document}</b><br>Page ${src.page}`
-
-tooltip.style.display="block"
-
-tooltip.style.left=event.pageX+"px"
-
-tooltip.style.top=event.pageY+"px"
-
-}
-
-function hideTooltip(){
-
-document.getElementById("tooltip").style.display="none"
-
-}
-
 
 /* Enter */
 
