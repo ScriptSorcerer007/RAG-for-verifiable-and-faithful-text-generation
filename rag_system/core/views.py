@@ -272,8 +272,8 @@ Return ONLY JSON:
                 sources.append({
                     "document": doc.metadata["source"],
                     "page": doc.metadata["page"],
-                    "link": f"/media/{doc.metadata['source']}#page={doc.metadata['page']}"
-                })
+                    "chunk": doc.page_content,
+                    "link": f"/media/{doc.metadata['source']}#page={doc.metadata['page']}"})
 
             # ===============================
             # FINAL RESPONSE
