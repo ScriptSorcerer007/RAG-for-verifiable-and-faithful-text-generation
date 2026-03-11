@@ -126,5 +126,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Allow PDFs to open in iframe
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
 #Gemini api key 
 GEMINI_API_KEY = "AIzaSyCORZDu0NZKcMvKFAWHSltdGvC93LZpnw4"

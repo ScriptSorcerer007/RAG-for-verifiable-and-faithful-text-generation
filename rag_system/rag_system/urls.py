@@ -20,13 +20,13 @@ from core.views import upload_pdf, ask_question, home
 from django.conf import settings
 from django.conf.urls.static import static
 
-
 urlpatterns = [
-    path('',home, name="home"),
+    path('', home, name="home"),
     path('admin/', admin.site.urls),
     path('upload-pdf/', upload_pdf),
     path('ask/', ask_question),
 ]
 
+# Serve uploaded PDFs
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

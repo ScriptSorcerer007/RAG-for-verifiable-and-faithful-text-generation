@@ -215,9 +215,6 @@ to{opacity:1;transform:translateY(0);}
 <!-- Evidence Panel -->
 
 <div class="evidence-panel">
-<div class="chunk">
-${src.chunk}
-</div>
 <h3>Evidence</h3>
 
 <div id="evidenceContent">
@@ -286,7 +283,6 @@ if(!question) return
 if(!currentChat) newChat()
 
 addMessage(question,"user")
-
 saveMessage(question,"user")
 
 document.getElementById("question").value=""
@@ -307,13 +303,13 @@ currentSources=data.sources
 
 let botMessage = addMessage("", "bot")
 
-streamText(botMessage, data.answer)
-
-setTimeout(()=>{
+streamText(botMessage,data.answer)
 
 let trust = (data.faithfulness_score * 100).toFixed(0)
 
-let finalHTML = `
+setTimeout(()=>{
+
+botMessage.innerHTML = `
 
 ${addCitations(data.answer)}
 
@@ -331,26 +327,18 @@ Alignment Score: ${data.alignment_score}
 
 `
 
-botMessage.innerHTML = finalHTML
-
 }, data.answer.length * 25)
 
-setTimeout(()=>{botMessage.innerHTML += extra}, answerText.length*25)
-
-
-saveMessage(answerText,"bot")
-
+saveMessage(data.answer,"bot")
 
 if(!chatSessions[currentChat].title){
 
 chatSessions[currentChat].title=generateTitle(question)
-
 updateSidebar()
 
 }
 
 }
-
 
 /* Streaming */
 
@@ -519,6 +507,12 @@ let html = `
 <b>${src.document}</b><br>
 Page ${src.page}
 
+<div style="margin-top:10px;font-size:13px">
+<b>Evidence Chunk:</b>
+<br>
+${src.chunk}
+</div>
+
 <iframe
 src="${src.link}"
 width="100%"
@@ -533,7 +527,6 @@ style="border:none;margin-top:10px">
 document.getElementById("evidenceContent").innerHTML = html
 
 }
-
 /* Tooltip */
 
 function showTooltip(event,index){
