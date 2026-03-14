@@ -190,7 +190,6 @@ def ask_question(request):
         try:
 
             data = json.loads(request.body)
-
             query = data.get("question")
 
             if not query:
@@ -209,10 +208,7 @@ def ask_question(request):
             # HYBRID RETRIEVAL
             # ===============================
 
-            dense_results = vectorstore.similarity_search(query, k=10)
-
             hybrid = HybridRetriever(vectorstore, bm25)
-
             hybrid_results = hybrid.retrieve(query, k=10)
 
             print("Hybrid results:", len(hybrid_results))
@@ -226,7 +222,6 @@ def ask_question(request):
             reranked_docs = reranker.rerank(query, hybrid_results, top_k=5)
 
             documents = reranked_docs
-
             scores = [1.0] * len(documents)
 
             # ===============================
@@ -236,10 +231,7 @@ def ask_question(request):
             context_parts = []
 
             for i, doc in enumerate(documents, start=1):
-
-                context_parts.append(
-                    f"[{i}] {doc.page_content}"
-                )
+                context_parts.append(f"[{i}] {doc.page_content}")
 
             context = "\n\n".join(context_parts)
 
@@ -253,6 +245,8 @@ You are a helpful assistant.
 Use ONLY the provided evidence.
 
 Cite evidence number like [1].
+
+(if one Cite complete Start the next by next line).
 
 Evidence:
 {context}
@@ -274,9 +268,7 @@ Question:
             response = requests.post(url, headers=headers, json=payload)
 
             if response.status_code != 200:
-
                 print("Gemini error:", response.text)
-
                 return JsonResponse({"error": response.text}, status=500)
 
             result = response.json()
@@ -288,7 +280,6 @@ Question:
             # ===============================
 
             answer_embedding = embeddings.embed_query(answer_text)
-
             context_embedding = embeddings.embed_query(context)
 
             alignment_score = cosine_similarity(
@@ -347,15 +338,15 @@ Return JSON:
 
             sources = []
 
-            for doc in documents:
+            for i, doc in enumerate(documents):
 
                 sources.append({
-
+                    "rank": i + 1,
+                    "score": scores[i],
                     "document": doc.metadata["source"],
                     "page": doc.metadata["page"],
                     "chunk": doc.page_content,
                     "link": f"/media/{doc.metadata['source']}#page={doc.metadata['page']}"
-
                 })
 
             # ===============================

@@ -24,12 +24,13 @@ height:100vh;
 /* Sidebar */
 
 .sidebar{
-width:260px;
-background:rgba(255,255,255,0.08);
-backdrop-filter: blur(18px) saturate(180%);
+width:280px;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(20px);
 padding:20px;
-border-right:1px solid rgba(255,255,255,0.15);
-box-shadow:0 8px 32px rgba(0,0,0,0.3);
+border-right:1px solid rgba(255,255,255,0.1);
+display:flex;
+flex-direction:column;
 }
 
 .sidebar h2{
@@ -84,13 +85,13 @@ padding:30px;
 /* Messages */
 
 .message{
-margin-bottom:20px;
-padding:16px;
-border-radius:14px;
+margin-bottom:16px;
+padding:14px 16px;
+border-radius:12px;
 max-width:65%;
-animation:fadeIn .25s ease;
-backdrop-filter:blur(10px);
-box-shadow:0 8px 20px rgba(0,0,0,0.3);
+line-height:1.5;
+font-size:15px;
+animation:fadeIn .2s ease;
 }
 
 .user{
@@ -154,10 +155,23 @@ overflow-y:auto;
 }
 
 .evidence-box{
-background:rgba(255,255,255,0.05);
+background:rgba(255,255,255,0.06);
 padding:12px;
 border-radius:10px;
 margin-bottom:12px;
+border:1px solid rgba(255,255,255,0.08);
+transition:all .2s ease;
+}
+
+.evidence-box:hover{
+transform:translateY(-2px);
+background:rgba(255,255,255,0.08);
+}
+
+/* chat box */
+ 
+.chat-box{
+scroll-behavior:smooth;
 }
 
 /* Citations */
@@ -242,6 +256,37 @@ from{opacity:0;transform:translateY(8px);}
 to{opacity:1;transform:translateY(0);}
 }
 
+
+
+/* Loader */
+
+.loader{
+display:flex;
+gap:4px;
+}
+
+.loader span{
+width:6px;
+height:6px;
+background:#7c3aed;
+border-radius:50%;
+animation:blink 1.2s infinite;
+}
+
+.loader span:nth-child(2){
+animation-delay:0.2s;
+}
+
+.loader span:nth-child(3){
+animation-delay:0.4s;
+}
+
+@keyframes blink{
+0%{opacity:0.2}
+50%{opacity:1}
+100%{opacity:0.2}
+}
+
 </style>
 </head>
 
@@ -297,8 +342,9 @@ to{opacity:1;transform:translateY(0);}
 
 <h3>Evidence</h3>
 
-<div id="evidenceContent">
-Click a citation to view evidence
+<div id="evidenceContent"></div>
+<div id="highlightText" style="margin-top:10px;color:#a78bfa">
+
 </div>
 
 </div>
@@ -339,59 +385,79 @@ document.getElementById("chat").innerHTML=""
 
 }
 
-/* Upload */
+/* Upload with real progress */
 
-async function uploadPDF(){
+function uploadPDF(){
 
-let fileInput=document.getElementById("pdfFile")
+let fileInput = document.getElementById("pdfFile")
 
-if(!fileInput.files.length) return
-
-let progressBox=document.getElementById("uploadProgress")
-let progressBar=document.getElementById("progressBar")
-let progressText=document.getElementById("uploadText")
-
-progressBox.style.display="block"
-
-function setProgress(p,text){
-progressBar.style.width=p+"%"
-progressText.innerText=text
+if(!fileInput.files.length){
+alert("Select a PDF file first")
+return
 }
 
-setProgress(10,"Uploading PDF...")
+let file = fileInput.files[0]
 
-let formData=new FormData()
-formData.append("file",fileInput.files[0])
+let progressBox = document.getElementById("uploadProgress")
+let progressBar = document.getElementById("progressBar")
+let progressText = document.getElementById("uploadText")
 
-setProgress(20,"Sending file to server...")
+progressBox.style.display = "block"
 
-let response=await fetch("/upload-pdf/",{
-method:"POST",
-body:formData
-})
+let formData = new FormData()
+formData.append("file", file)
 
-setProgress(40,"Extracting text...")
+let xhr = new XMLHttpRequest()
 
-await new Promise(r=>setTimeout(r,400))
+/* Real upload progress */
+xhr.upload.onprogress = function(e){
 
-setProgress(60,"Chunking document...")
+if(e.lengthComputable){
 
-await new Promise(r=>setTimeout(r,400))
+let percent = Math.round((e.loaded / e.total) * 100)
 
-setProgress(80,"Creating embeddings...")
+progressBar.style.width = percent + "%"
+progressText.innerText = "Uploading... " + percent + "%"
 
-await new Promise(r=>setTimeout(r,400))
+}
 
-setProgress(95,"Building vector index...")
+}
 
-let data=await response.json()
+/* When upload completes */
+xhr.onload = function(){
 
-setProgress(100,"Document ready!")
+if(xhr.status === 200){
+
+let data = JSON.parse(xhr.responseText)
+
+progressBar.style.width = "100%"
+progressText.innerText = "Processing document..."
 
 setTimeout(()=>{
-progressBox.style.display="none"
+progressText.innerText = "Document ready!"
 alert(data.message)
+progressBox.style.display = "none"
 },800)
+
+}else{
+
+alert("Upload failed")
+
+}
+
+}
+
+/* Error handling */
+xhr.onerror = function(){
+
+alert("Upload error")
+progressBox.style.display = "none"
+
+}
+
+/* Send request */
+xhr.open("POST","/upload-pdf/",true)
+xhr.send(formData)
 
 }
 
@@ -410,7 +476,11 @@ saveMessage(question,"user")
 
 document.getElementById("question").value=""
 
-let loading=addMessage("Thinking...","bot")
+let loading=addMessage(`
+<div class="loader">
+<span></span><span></span><span></span>
+</div>
+`,"bot")
 
 let response=await fetch("/ask/",{
 method:"POST",
@@ -426,31 +496,35 @@ currentSources=data.sources
 
 let botMessage = addMessage("", "bot")
 
-streamText(botMessage,data.answer)
-
 let trust = (data.faithfulness_score * 100).toFixed(0)
 
-setTimeout(()=>{
+let color = "#ef4444" // red
+
+if(trust > 80){
+color = "#22c55e" // green
+}
+else if(trust > 50){
+color = "#facc15" // yellow
+}
 
 botMessage.innerHTML = `
-
 ${addCitations(data.answer)}
 
-<div style="margin-top:10px;font-size:12px">
-
-Trust Score: ${trust}%
-
-<div class="bar">
-<div class="bar-fill" style="width:${trust}%"></div>
+<div style="
+margin-top:10px;
+display:inline-block;
+padding:4px 8px;
+border-radius:6px;
+background:${color};
+font-size:12px;
+">
+Confidence ${trust}%
 </div>
 
-Alignment Score: ${data.alignment_score}
-
+<div style="margin-top:6px;font-size:12px;color:#a78bfa">
+Alignment Score: ${data.alignment_score.toFixed(3)}
 </div>
-
 `
-
-}, data.answer.length * 25)
 
 saveMessage(data.answer,"bot")
 
@@ -552,52 +626,30 @@ let src=currentSources[index]
 
 if(!src) return
 
-let html=`
+let html = `
 
-<h3>${src.document}</h3>
+<div class="evidence-box">
 
-<p><b>Page:</b> ${src.page}</p>
+<b>${src.document}</b><br>
+Page ${src.page}
 
-<p><b>Evidence Chunk:</b></p>
+<iframe
+src="${src.link}"
+width="100%"
+height="400"
+style="border:none;margin-top:10px">
+</iframe>
 
-<p>${src.chunk}</p>
-
-<iframe src="${src.link}" width="100%" height="400" style="border:none;border-radius:10px"></iframe>
+</div>
 
 `
 
-document.getElementById("modalBody").innerHTML=html
+document.getElementById("evidenceContent").innerHTML = html
 
-document.getElementById("evidenceModal").style.display="block"
+document.getElementById("highlightText").innerHTML =
 
-}
+`<b>Matched Evidence:</b><br>${src.chunk}`
 
-function closeEvidence(){
-document.getElementById("evidenceModal").style.display="none"
-}
-
-/* Tooltip */
-
-function showTooltip(event,index){
-
-let src=currentSources[index]
-
-if(!src) return
-
-let tooltip=document.getElementById("tooltip")
-
-tooltip.innerHTML=`<b>${src.document}</b><br>Page ${src.page}`
-
-tooltip.style.display="block"
-
-tooltip.style.left=event.pageX+"px"
-
-tooltip.style.top=event.pageY+"px"
-
-}
-
-function hideTooltip(){
-document.getElementById("tooltip").style.display="none"
 }
 
 /* Sidebar */
@@ -654,6 +706,21 @@ addMessage(msg.text,msg.type)
 document.getElementById("question").addEventListener("keypress",function(e){
 if(e.key==="Enter") askQuestion()
 })
+
+
+/* Tooltip */
+function showTooltip(e,index){
+let tooltip=document.getElementById("tooltip")
+tooltip.innerText="Evidence "+(index+1)
+tooltip.style.display="block"
+tooltip.style.left=e.pageX+10+"px"
+tooltip.style.top=e.pageY+10+"px"
+}
+
+function hideTooltip(){
+document.getElementById("tooltip").style.display="none"
+}
+
 
 </script>
 
