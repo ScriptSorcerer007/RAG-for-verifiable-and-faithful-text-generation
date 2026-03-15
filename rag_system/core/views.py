@@ -20,6 +20,8 @@ from core.rag.bm25_retriever import BM25Retriever
 from core.rag.hybrid_retriever import HybridRetriever
 from core.rag.reranker import ReRanker
 
+# for link gerneration error for spaces in the documents
+from urllib.parse import quote
 
 # ===============================
 # HOME PAGE
@@ -345,7 +347,7 @@ Return JSON:
                     "document": doc.metadata["source"],
                     "page": doc.metadata["page"],
                     "chunk": doc.page_content,
-                    "link": f"/media/{doc.metadata['source']}#page={doc.metadata['page']}&search={doc.page_content[:40]}"
+                    "link": f"/media/{quote(doc.metadata['source'])}#page={doc.metadata['page']}&search={doc.page_content[:40]}"
                 })
 
             # ===============================
