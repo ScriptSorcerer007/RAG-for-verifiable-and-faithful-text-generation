@@ -80,6 +80,8 @@ backdrop-filter:blur(12px);
 flex:1;
 overflow-y:auto;
 padding:30px;
+scroll-behavior:smooth;
+max-height:calc(100vh - 120px);
 }
 
 /* Messages */
@@ -496,7 +498,7 @@ currentSources=data.sources
 
 let botMessage = addMessage("", "bot")
 
-let trust = (data.faithfulness_score * 100).toFixed(0)
+let trust = (data.confidence * 100).toFixed(0)
 
 let color = "#ef4444" // red
 

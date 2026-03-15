@@ -286,7 +286,6 @@ Question:
                 [answer_embedding],
                 [context_embedding]
             )[0][0]
-
             # ===============================
             # VERIFICATION
             # ===============================
@@ -352,19 +351,29 @@ Return JSON:
             # ===============================
             # RESPONSE
             # ===============================
+            faith = verification_data.get("faithfulness_score", 0)
 
+            # clamp faith between 0 and 1
+            faith = max(0, min(1, faith))
+
+            # retrieval score
+            retrieval_score = sum(scores) / len(scores)
+
+           # final confidence
+            confidence = (
+               0.4 * retrieval_score +
+               0.3 * alignment_score +
+               0.3 * faith
+               )
             return JsonResponse({
-
                 "answer": answer_text,
-                "faithfulness_score": verification_data.get("faithfulness_score"),
+                "confidence": float(confidence),
+                "faithfulness_score": faith,
                 "hallucination": verification_data.get("hallucination"),
                 "verification": verification_data.get("explanation"),
                 "alignment_score": float(alignment_score),
-                "retrieval_scores": scores,
-                "average_retrieval_score": sum(scores) / len(scores),
                 "sources": sources
-
-            })
+                })
 
         except Exception as e:
 
