@@ -345,7 +345,7 @@ Return JSON:
                     "document": doc.metadata["source"],
                     "page": doc.metadata["page"],
                     "chunk": doc.page_content,
-                    "link": f"/media/{doc.metadata['source']}#page={doc.metadata['page']}"
+                    "link": f"/media/{doc.metadata['source']}#page={doc.metadata['page']}&search={doc.page_content[:40]}"
                 })
 
             # ===============================

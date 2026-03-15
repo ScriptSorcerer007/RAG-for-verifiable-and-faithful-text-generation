@@ -9,9 +9,14 @@
 body{
 margin:0;
 font-family:Arial;
-background: radial-gradient(circle at top,#0f172a,#020617);
 color:white;
 overflow:hidden;
+
+background:
+radial-gradient(circle at 20% 20%,rgba(124,58,237,.25),transparent 40%),
+radial-gradient(circle at 80% 30%,rgba(91,33,182,.25),transparent 40%),
+radial-gradient(circle at 50% 80%,rgba(167,139,250,.25),transparent 40%),
+linear-gradient(180deg,#020617,#0f172a);
 }
 
 /* Layout */
@@ -31,6 +36,8 @@ padding:20px;
 border-right:1px solid rgba(255,255,255,0.1);
 display:flex;
 flex-direction:column;
+overflow-y:auto;
+max-height:100vh;
 }
 
 .sidebar h2{
@@ -104,6 +111,17 @@ margin-left:auto;
 .bot{
 background:rgba(255,255,255,0.07);
 border:1px solid rgba(255,255,255,0.1);
+}
+
+/* Easy scroll*/
+
+::-webkit-scrollbar{
+width:6px;
+}
+
+::-webkit-scrollbar-thumb{
+background:#7c3aed;
+border-radius:6px;
 }
 
 /* Input Area */
@@ -606,20 +624,12 @@ chatSessions[currentChat].messages.push({text:text,type:type})
 
 function addCitations(text){
 
-let sentences=text.split(". ")
+let result = text
 
-let result=""
+currentSources.forEach((src,i)=>{
 
-sentences.forEach((s,i)=>{
-
-if(s.trim().length>0){
-
-result+=`${s}. <span class="citation"
-onclick="showEvidence(${i})"
-onmouseover="showTooltip(event,${i})"
-onmouseout="hideTooltip()">[${i+1}]</span> `
-
-}
+result += ` <span class="citation"
+onclick="showEvidence(${i})">[${i+1}]</span>`
 
 })
 
@@ -631,15 +641,11 @@ return result
 
 function showEvidence(index){
 
-let panel = document.querySelector(".evidence-panel")
-panel.classList.add("active")
-
-let src=currentSources[index]
+let src = currentSources[index]
 
 if(!src) return
 
 let html = `
-
 <div class="evidence-box">
 
 <b>${src.document}</b><br>
@@ -655,10 +661,12 @@ style="border:none;margin-top:10px">
 </div>
 `
 
-document.getElementById("evidenceContent").innerHTML = html
+document.getElementById("evidenceContent").innerHTML += html
 
-document.getElementById("highlightText").innerHTML =
-`<b>Matched Evidence:</b><br>${src.chunk}`
+document.getElementById("highlightText").innerHTML +=
+`<div style="margin-top:8px">
+<b>Evidence ${index+1}:</b><br>${src.chunk}
+</div>`
 
 }
 
