@@ -8,6 +8,8 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
+from django.contrib.auth import logout
+from django.shortcuts import redirect
 
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -22,6 +24,8 @@ from core.rag.reranker import ReRanker
 
 # for link gerneration error for spaces in the documents
 from urllib.parse import quote
+# file name like this Generative ai with langchain-2.pdf have spaces it will encode it like this to prevent from link fail
+# Generative%20ai%20with%20langchain-2.pdf
 
 # ===============================
 # HOME PAGE
@@ -29,6 +33,14 @@ from urllib.parse import quote
 
 def home(request):
     return render(request, "index.html")
+
+
+from django.shortcuts import redirect
+
+def home_redirect(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    return redirect('account_login')
 
 
 # ===============================
@@ -73,6 +85,13 @@ def load_vectorstore():
 
 @csrf_exempt
 def upload_pdf(request):
+    if not request.user.is_authenticated:
+        if request.session.get("uploaded", False):
+            return JsonResponse({
+                 "error": "LOGIN_REQUIRED"
+        })
+
+        request.session["uploaded"] = True
 
     global vectorstore
     global bm25
@@ -179,8 +198,19 @@ def upload_pdf(request):
 # ASK QUESTION
 # ===============================
 
-@csrf_exempt
+
 def ask_question(request):
+
+    if not request.user.is_authenticated:
+        count = request.session.get('chat_count', 0)
+
+        if count >= 10:
+            return JsonResponse({
+                "error": "LOGIN_REQUIRED"
+            })
+
+        request.session['chat_count'] = count + 1
+    
 
     global vectorstore
     global bm25
@@ -384,3 +414,7 @@ Return JSON:
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Use POST method."})
+
+def logout_view(request):
+    logout(request)
+    return redirect('/')
