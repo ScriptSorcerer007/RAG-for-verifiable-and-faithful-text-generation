@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeritasAI — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700;800&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+/* CSS STYLES PRESERVED EXACTLY AS PROVIDED */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040812;
+  --surface:rgba(255,255,255,0.04);
+  --surface-2:rgba(255,255,255,0.07);
+  --border:rgba(255,255,255,0.09);
+  --border-focus:rgba(124,58,237,0.55);
+  --primary:#7c3aed;
+  --primary-light:#a78bfa;
+  --primary-glow:rgba(124,58,237,0.35);
+  --cyan:#06b6d4;
+  --cyan-glow:rgba(6,182,212,0.2);
+  --text:#f1f5f9;
+  --text-2:#94a3b8;
+  --text-3:#475569;
+  --danger:#ef4444;
+  --success:#10b981;
+}
+html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;}
+#bg-canvas{position:fixed;inset:0;z-index:0}
+.grid-overlay{position:fixed;inset:0;z-index:0;background-size:48px 48px;pointer-events:none;background-image:linear-gradient(rgba(124,58,237,.06) 1px, transparent 1px),linear-gradient(90deg, rgba(124,58,237,.06) 1px, transparent 1px);-webkit-mask:radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);}
+.auth-layout{position:relative;z-index:1;display:flex;height:100vh;}
+.left-panel{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:60px 72px;position:relative;overflow:hidden;}
+.left-panel::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 30% 50%, rgba(124,58,237,.18), transparent 70%);pointer-events:none;}
+.brand-mark{display:flex;align-items:center;gap:12px;margin-bottom:56px;position:relative;z-index:1;}
+.brand-icon{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,var(--primary),#5b21b6);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 6px 22px var(--primary-glow);}
+.brand-name{font-family:'Oxanium',monospace;font-weight:800;font-size:22px;background:linear-gradient(135deg,#a78bfa,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.brand-sub{font-size:9px;color:var(--text-3);font-family:'JetBrains Mono',monospace;letter-spacing:2.5px;text-transform:uppercase;margin-top:2px;}
+.left-tagline h1{font-family:'Oxanium',monospace;font-weight:800;font-size:clamp(28px,3.2vw,44px);line-height:1.15;margin-bottom:18px;background:linear-gradient(135deg,#f1f5f9 0%,#a78bfa 55%,#06b6d4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.left-tagline p{font-size:15px;color:var(--text-2);line-height:1.75;max-width:380px;}
+.feature-list{margin-top:44px;display:flex;flex-direction:column;gap:16px;position:relative;z-index:1;}
+.feature-item{display:flex;align-items:center;gap:13px;}
+.feature-dot{width:32px;height:32px;border-radius:9px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;}
+.feature-text{font-size:13px;color:var(--text-2)}
+.feature-text b{color:var(--text);font-weight:600}
+.trust-bar{margin-top:52px;padding:14px 18px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;gap:12px;position:relative;z-index:1;}
+.trust-avatars{display:flex}
+.ta{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#5b21b6);border:2px solid var(--bg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-left:-8px;font-family:'Oxanium',monospace;}
+.ta:first-child{margin-left:0}
+.trust-text{font-size:12px;color:var(--text-2)}
+.panel-divider{width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.08) 30%,rgba(255,255,255,.08) 70%,transparent);flex-shrink:0;}
+.right-panel{width:480px;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;padding:50px 52px;background:rgba(4,8,18,0.6);backdrop-filter:blur(40px);border-left:1px solid var(--border);position:relative;overflow:hidden;}
+.view{display:none;position:relative;z-index:1}
+.view.active{display:block;animation:viewIn .35s cubic-bezier(.4,0,.2,1) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.form-heading{margin-bottom:28px}
+.form-title{font-family:'Oxanium',monospace;font-weight:700;font-size:24px;margin-bottom:6px;}
+.form-sub{font-size:13px;color:var(--text-2);line-height:1.5}
+.oauth-row{display:flex;gap:10px;margin-bottom:22px}
+.oauth-btn{flex:1;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;font-family:'Barlow',sans-serif;font-weight:500;font-size:13px;transition:all .22s;}
+.oauth-btn:hover{background:var(--surface-2);transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,.4)}
+.g-icon, .ms-icon{width:18px;height:18px;flex-shrink:0}
+.or-divider{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+.or-line{flex:1;height:1px;background:var(--border)}
+.or-text{font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;letter-spacing:1px;white-space:nowrap}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11.5px;font-weight:600;color:var(--text-2);margin-bottom:7px;font-family:'JetBrains Mono',monospace;letter-spacing:.5px;text-transform:uppercase;}
+.field-wrap{position:relative}
+.field-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:15px;pointer-events:none;}
+.field input{width:100%;padding:11px 13px 11px 38px;background:var(--surface);border:1px solid var(--border);border-radius:11px;color:var(--text);font-family:'Barlow',sans-serif;font-size:13.5px;outline:none;transition:all .2s;}
+.field input:focus{border-color:var(--border-focus);background:rgba(124,58,237,.06);box-shadow:0 0 0 3px rgba(124,58,237,.12);}
+.field-error{font-size:11px;color:var(--danger);margin-top:5px;display:none;padding-left:2px}
+.field-error.show{display:block}
+.eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-3);cursor:pointer;padding:4px;}
+.pw-strength{margin-top:8px;display:none}
+.pw-strength.show{display:block}
+.pw-bars{display:flex;gap:4px;margin-bottom:4px}
+.pw-bar{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.08);transition:background .3s}
+.pw-label{font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace}
+.meta-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;font-size:12.5px;}
+.checkbox-wrap{display:flex;align-items:center;gap:8px;cursor:pointer}
+.forgot-link{color:var(--primary-light);text-decoration:none;font-size:12px;}
+.submit-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--primary),#5b21b6);border:none;border-radius:12px;color:white;font-weight:600;cursor:pointer;transition:all .22s;box-shadow:0 5px 22px var(--primary-glow);display:flex;align-items:center;justify-content:center;gap:8px;}
+.submit-btn:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(124,58,237,.6)}
+.btn-spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .65s linear infinite;display:none;}
+.submit-btn.loading .btn-spinner{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.switch-view{margin-top:20px;text-align:center;font-size:13px;color:var(--text-3);}
+.switch-link{color:var(--primary-light);cursor:pointer;font-weight:600;background:none;border:none;padding:0;font-size:13px;}
+@media(max-width:900px){.left-panel, .panel-divider{display:none}.right-panel{width:100%;border-left:none;padding:36px 28px}}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="grid-overlay"></div>
+
+<div class="auth-layout">
+  <div class="left-panel">
+    <div class="brand-mark">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-name">VeritasAI</div>
+        <div class="brand-sub">Truth-Grounded RAG</div>
+      </div>
+    </div>
+    <div class="left-tagline">
+      <h1>Intelligence grounded<br>in truth.</h1>
+      <p>Upload documents, ask questions, and receive answers backed by verifiable evidence.</p>
+    </div>
+    <div class="feature-list">
+      <div class="feature-item"><div class="feature-dot">📎</div><div class="feature-text"><b>PDF-native RAG</b></div></div>
+      <div class="feature-item"><div class="feature-dot">🔍</div><div class="feature-text"><b>Citation-first</b></div></div>
+      <div class="feature-item"><div class="feature-dot">📊</div><div class="feature-text"><b>Confidence scoring</b></div></div>
+      <div class="feature-item"><div class="feature-dot">🔒</div><div class="feature-text"><b>Private & secure</b></div></div>
+    </div>
+    <div class="trust-bar">
+      <div class="trust-avatars"><div class="ta">A</div><div class="ta">R</div><div class="ta">S</div></div>
+      <div class="trust-text">Join <b>2,400+</b> researchers</div>
+    </div>
+  </div>
+
+  <div class="panel-divider"></div>
+
+  <div class="right-panel">
+
+    <div class="view active" id="view-signin">
+      <div class="form-heading">
+        {% if messages %}
+  {% for message in messages %}
+    <div style="color: #ef4444; font-size: 12px; margin-bottom: 10px;">
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endif %}
+        <div class="form-title">Welcome back</div>
+        <div class="form-sub">Sign in to continue your research</div>
+      </div>
+
+      <div class="oauth-row">
+        <a href="/accounts/google/login/" class="oauth-btn google">Google</a>
+        <a href="/accounts/microsoft/login/" class="oauth-btn microsoft">Microsoft</a>
+      </div>
+
+      <div class="or-divider"><div class="or-line"></div><div class="or-text">or continue with email</div><div class="or-line"></div></div>
+
+      <form method="POST" action="{% url 'login' %}" id="signin-form">
+        {% csrf_token %}
+        <div class="field">
+          <label>Email address</label>
+          <div class="field-wrap">
+            <span class="field-icon">✉</span>
+            <input type="email" id="si-email" name="email" placeholder="you@example.com" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔒</span>
+            <input type="password" id="si-pass" name="password" placeholder="••••••••" required>
+            <button type="button" class="eye-btn" onclick="togglePass('si-pass',this)">👁</button>
+          </div>
+        </div>
+        <div class="meta-row">
+          <label class="checkbox-wrap"><input type="checkbox" name="remember"> <span>Remember me</span></label>
+          <a href="#" class="forgot-link" onclick="showForgot(); return false;">Forgot password?</a>
+        </div>
+        <button type="submit" class="submit-btn" id="si-btn"><div class="btn-spinner"></div><span class="btn-text">Sign In</span></button>
+      </form>
+
+      <div class="switch-view">Don't have an account? <button class="switch-link" onclick="switchView('signup')">Create one free →</button></div>
+    </div>
+
+    <div class="view" id="view-signup">
+      <div class="form-heading">
+        {% if messages %}
+  {% for message in messages %}
+    <div style="color: #ef4444; font-size: 12px; margin-bottom: 10px;">
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endif %}
+        <div class="form-title">Create your account</div>
+        <div class="form-sub">Start researching with full citations</div>
+      </div>
+
+      <form method="POST" action="{% url 'register' %}" id="signup-form">
+        {% csrf_token %}
+        <div class="field">
+          <label>Email address</label>
+          <div class="field-wrap">
+            <span class="field-icon">✉</span>
+            <input type="email" id="su-email" name="email" placeholder="you@example.com" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔒</span>
+            <input type="password" id="su-pass" name="password" placeholder="Min. 8 characters" oninput="checkStrength(this.value)" onfocus="showStrength()" required minlength="8">
+            <button type="button" class="eye-btn" onclick="togglePass('su-pass',this)">👁</button>
+          </div>
+          <div class="pw-strength" id="pw-strength">
+            <div class="pw-bars"><div class="pw-bar" id="pb1"></div><div class="pw-bar" id="pb2"></div><div class="pw-bar" id="pb3"></div><div class="pw-bar" id="pb4"></div></div>
+            <div class="pw-label" id="pw-label">Enter a password</div>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="su-btn"><div class="btn-spinner"></div><span class="btn-text">Create Account</span></button>
+      </form>
+      <div class="switch-view">Already have an account? <button class="switch-link" onclick="switchView('signin')">← Sign in</button></div>
+    </div>
+
+    <div class="view" id="view-forgot">
+      <div class="form-heading"><div class="form-title">Reset password</div></div>
+      <form method="POST" action="{% url 'password_reset' %}" id="forgot-form">
+        {% csrf_token %}
+        <div class="field">
+          <label>Email address</label>
+          <div class="field-wrap"><span class="field-icon">✉</span><input type="email" name="email" placeholder="you@example.com" required></div>
+        </div>
+        <button type="submit" class="submit-btn" id="fp-btn"><span class="btn-text">Send Reset Link</span></button>
+      </form>
+      <div class="switch-view"><button class="switch-link" onclick="switchView('signin')">← Back to Sign In</button></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* PRESERVED THREE.JS & UI LOGIC */
+;(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x040812, 1);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  cam.position.z = 80;
+  const N = 120, pos = new Float32Array(N*3), vel = [];
+  for(let i=0;i<N;i++){
+    pos[i*3]=(Math.random()-.5)*180; pos[i*3+1]=(Math.random()-.5)*130; pos[i*3+2]=(Math.random()-.5)*60;
+    vel.push({x:(Math.random()-.5)*.038, y:(Math.random()-.5)*.033, z:(Math.random()-.5)*.015});
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({size:1.2, color:0x7c3aed, transparent:true, opacity:.65})));
+  (function loop(){
+    requestAnimationFrame(loop);
+    for(let i=0;i<N;i++){ pos[i*3]+=vel[i].x; pos[i*3+1]+=vel[i].y; pos[i*3+2]+=vel[i].z; }
+    geo.attributes.position.needsUpdate=true;
+    renderer.render(scene,cam);
+  })();
+})();
+
+function switchView(name){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('view-'+name).classList.add('active'); }
+function showForgot(){ switchView('forgot') }
+function togglePass(id, btn){ const inp = document.getElementById(id); const show = inp.type==='password'; inp.type = show ? 'text' : 'password'; btn.textContent = show ? '🙈' : '👁'; }
+function showStrength(){ document.getElementById('pw-strength').classList.add('show') }
+function checkStrength(pw){
+  let score = Math.min(pw.length/2, 4);
+  const bars = [document.getElementById('pb1'),document.getElementById('pb2'),document.getElementById('pb3'),document.getElementById('pb4')];
+  bars.forEach((b,i)=> b.style.background = i < score ? '#7c3aed' : 'rgba(255,255,255,.08)');
+}
+function oauthLogin(provider){ showToast('Social login coming soon...', 'info'); }
+function showToast(msg, type='info'){
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`; t.innerText = msg;
+  c.appendChild(t); setTimeout(()=>t.remove(), 3000);
+}
+
+// Handle Loading states on submit
+document.querySelectorAll('form').forEach(form => {
+  form.addEventListener('submit', () => {
+    const btn = form.querySelector('.submit-btn');
+    if(btn) btn.classList.add('loading');
+  });
+});
+</script>
+</body>
+</html>
