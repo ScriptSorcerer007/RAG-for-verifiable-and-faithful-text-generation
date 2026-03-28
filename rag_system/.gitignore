@@ -1,7 +1,43 @@
-venv/
+# 🔐 Secrets (CRITICAL)
+*.json
+*microsoft*
+.env
+*.env
+
+# 🧠 AI / RAG
+faiss_index/
+*.pkl
+*.bin
+
+# 🐍 Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# 📦 Virtual Environment
+venv/
+env/
+
+# 🗄️ Database
 db.sqlite3
-.env
-faiss_index/
+
+# 📁 Media & Static
 media/
+staticfiles/
+
+# 🗜️ Archives
+*.zip
+*.tar
+*.gz
+
+# 📝 Logs
+*.log
+
+# 💻 OS files
+.DS_Store
+Thumbs.db
+
+# 🧪 IDE
+.vscode/
+.idea/

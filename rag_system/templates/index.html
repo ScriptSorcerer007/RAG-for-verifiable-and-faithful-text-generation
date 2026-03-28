@@ -3,144 +3,193 @@
 <head>
 
 <title>VeritasAI - Truth Grounded RAG</title>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700;800&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <style>
 
+/* ── RESET & BASE ── */
+*{box-sizing:border-box}
 body{
 margin:0;
-font-family: 'Inter', Arial;
+font-family:Arial;
 color:white;
 overflow:hidden;
 
 background:
-radial-gradient(circle at 10% 20%,rgba(124,58,237,.35),transparent 40%),
-radial-gradient(circle at 90% 30%,rgba(91,33,182,.35),transparent 40%),
-radial-gradient(circle at 50% 90%,rgba(167,139,250,.25),transparent 40%),
-linear-gradient(180deg,#020617,#020617,#0f172a);
+radial-gradient(circle at 20% 20%,rgba(124,58,237,.25),transparent 40%),
+radial-gradient(circle at 80% 30%,rgba(91,33,182,.25),transparent 40%),
+radial-gradient(circle at 50% 80%,rgba(167,139,250,.25),transparent 40%),
+linear-gradient(180deg,#020617,#0f172a);
 }
 
-/* Layout */
-
+/* ── LAYOUT ── */
 .container{
-display:flex;
-height:100vh;
+  display:flex;
+  height:100vh;
+  position:relative;
+  z-index:1;
 }
 
-/* Sidebar */
-
+/* ── SIDEBAR ── */
 .sidebar{
-width:260px;
-background:rgba(255,255,255,0.03);
-backdrop-filter:blur(30px);
+width:280px;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(20px);
 padding:20px;
-border-right:1px solid rgba(255,255,255,0.08);
+border-right:1px solid rgba(255,255,255,0.1);
 display:flex;
 flex-direction:column;
-box-shadow:inset 0 0 30px rgba(124,58,237,.15);
+overflow-y:auto;
+max-height:100vh;
 }
 
 .sidebar h2{
 margin-top:0;
-font-weight:600;
-color:#c4b5fd;
 }
 
 /* Button glow */
 
+.sidebar h2{ display:none } /* original h2 hidden, replaced by logo */
+
+/* ── NEW CHAT BUTTON ── */
 .new-chat{
 background:linear-gradient(135deg,#7c3aed,#5b21b6);
-padding:12px;
-border-radius:14px;
+padding:10px;
+border-radius:10px;
 text-align:center;
 cursor:pointer;
 margin-bottom:20px;
-transition:.25s;
-box-shadow:0 0 15px rgba(124,58,237,.4);
+transition:.2s;
 }
-
 .new-chat:hover{
 transform:translateY(-2px);
-box-shadow:0 0 25px rgba(124,58,237,.8);
+box-shadow:0 6px 18px rgba(124,58,237,.6);
 }
 
 /* History */
 
 .history-item{
-background:rgba(255,255,255,0.05);
-padding:12px;
+background:rgba(255,255,255,0.06);
+padding:10px;
 margin-top:10px;
-border-radius:10px;
+border-radius:8px;
 cursor:pointer;
-transition:.25s;
+transition:.2s;
 }
 
 .history-item:hover{
 background:#7c3aed;
-transform:translateX(6px);
+transform:translateX(4px);
 }
+.history-item.active-chat{
+  background:rgba(124,58,237,.15);
+  border-color:rgba(124,58,237,.35);
+}
+.h-icon{font-size:11px;opacity:.4;flex-shrink:0}
+.h-title{flex:1;font-size:12px;color:rgba(255,255,255,.7);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.history-item:hover .h-title{color:white}
+.h-meta{font-size:9px;color:rgba(255,255,255,.25);font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.h-del{
+  background:none;border:none;color:rgba(255,255,255,.2);
+  cursor:pointer;padding:2px 5px;border-radius:4px;
+  font-size:11px;flex-shrink:0;opacity:0;transition:all .2s;
+}
+.history-item:hover .h-del{opacity:1}
+.h-del:hover{color:#ef4444!important;background:rgba(239,68,68,.1)!important;box-shadow:none!important;transform:none!important}
 
-/* Chat Area */
+/* ── TOPBAR ── */
+.topbar{
+  padding:11px 18px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  background:rgba(4,8,18,.7);backdrop-filter:blur(20px);
+  flex-shrink:0;
+}
+.toggle-btn{
+  width:32px;height:32px;border-radius:8px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.7);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;padding:0;
+}
+.toggle-btn:hover{
+  background:rgba(255,255,255,.1);border-color:rgba(124,58,237,.5);
+  box-shadow:none;transform:none;
+}
+#topbar-title{
+  flex:1;font-family:'Oxanium',monospace;font-weight:600;font-size:13px;
+  color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rag-badge{
+  display:flex;align-items:center;gap:5px;
+  font-size:10px;color:#10b981;font-family:'JetBrains Mono',monospace;
+  flex-shrink:0;
+}
+.rag-dot{width:5px;height:5px;border-radius:50%;background:#10b981;
+  box-shadow:0 0 6px #10b981;animation:blink 2s infinite}
 
+/* ── CHAT AREA ── */
 .chat-area{
 flex:1;
 display:flex;
 flex-direction:column;
-padding:20px;
+background:rgba(255,255,255,0.02);
+backdrop-filter:blur(12px);
 }
 
 /* Chat box */
 
+/* ── CHAT BOX ── */
 .chat-box{
 flex:1;
 overflow-y:auto;
-padding:20px;
-border-radius:20px;
-
-background:rgba(255,255,255,0.03);
-backdrop-filter:blur(20px);
-
-box-shadow:
-0 0 40px rgba(124,58,237,.15),
-inset 0 0 20px rgba(255,255,255,0.03);
+padding:30px;
+scroll-behavior:smooth;
+max-height:calc(100vh - 120px);
 }
 
 /* Messages */
 
 .message{
-margin-bottom:18px;
-padding:14px 18px;
-border-radius:16px;
+margin-bottom:16px;
+padding:14px 16px;
+border-radius:12px;
 max-width:65%;
-line-height:1.6;
-font-size:14px;
-animation:fadeIn .25s ease;
+line-height:1.5;
+font-size:15px;
+animation:fadeIn .2s ease;
 }
-
 .user{
 background:linear-gradient(135deg,#7c3aed,#6d28d9);
 margin-left:auto;
-box-shadow:0 0 20px rgba(124,58,237,.6);
 }
-
 .bot{
-background:rgba(255,255,255,0.05);
-border:1px solid rgba(255,255,255,0.08);
-box-shadow:0 0 20px rgba(124,58,237,.15);
+background:rgba(255,255,255,0.07);
+border:1px solid rgba(255,255,255,0.1);
 }
 
-/* Input */
+/* Easy scroll*/
+
+::-webkit-scrollbar{
+width:6px;
+}
+
+::-webkit-scrollbar-thumb{
+background:#7c3aed;
+border-radius:6px;
+}
+
+/* Input Area */
 
 .input-area{
 display:flex;
 gap:10px;
-padding:15px;
-margin-top:10px;
-
-background:rgba(255,255,255,0.03);
-border-radius:16px;
-backdrop-filter:blur(20px);
-
-box-shadow:0 0 25px rgba(124,58,237,.2);
+padding:20px;
+border-top:1px solid rgba(255,255,255,0.1);
 }
 
 input[type=text]{
@@ -153,8 +202,6 @@ background:rgba(255,255,255,0.08);
 color:white;
 }
 
-/* Button */
-
 button{
 padding:12px 18px;
 border:none;
@@ -162,49 +209,57 @@ border-radius:10px;
 background:linear-gradient(135deg,#7c3aed,#5b21b6);
 color:white;
 cursor:pointer;
-transition:.25s;
-box-shadow:0 0 10px rgba(124,58,237,.5);
+transition:all .25s ease;
 }
 
 button:hover{
 transform:translateY(-2px);
-box-shadow:0 0 20px rgba(124,58,237,.9);
+box-shadow:0 6px 18px rgba(124,58,237,.5);
 }
 
-/* Evidence panel */
+.upload-btn{
+font-size:20px;
+cursor:pointer;
+}
+
+/* Evidence Panel */
 
 .evidence-panel{
-width:300px;
-background:rgba(255,255,255,0.04);
-backdrop-filter:blur(30px);
-border-left:1px solid rgba(255,255,255,0.08);
+width:320px;
+background:rgba(255,255,255,0.06);
+backdrop-filter:blur(20px);
+border-left:1px solid rgba(255,255,255,0.15);
 padding:20px;
-
-box-shadow:-10px 0 40px rgba(124,58,237,.2);
-
+overflow-y:auto;
 transform:translateX(100%);
-transition:.35s;
+transition:transform .35s ease;
+position:relative;
 }
-
 .evidence-panel.active{
 transform:translateX(0);
 }
 
 .evidence-box{
-background:rgba(255,255,255,0.05);
+background:rgba(255,255,255,0.06);
 padding:12px;
-border-radius:12px;
+border-radius:10px;
 margin-bottom:12px;
 border:1px solid rgba(255,255,255,0.08);
-transition:.2s;
+transition:all .2s ease;
 }
 
 .evidence-box:hover{
-transform:translateY(-3px);
+transform:translateY(-2px);
 background:rgba(255,255,255,0.08);
 }
 
-/* Citation */
+/* chat box */
+ 
+.chat-box{
+scroll-behavior:smooth;
+}
+
+/* Citations */
 
 .citation{
 color:#c4b5fd;
@@ -212,7 +267,7 @@ cursor:pointer;
 font-weight:bold;
 padding:2px 6px;
 border-radius:6px;
-transition:.2s;
+transition:all .2s;
 }
 
 .citation:hover{
@@ -221,28 +276,100 @@ color:white;
 box-shadow:0 0 10px #7c3aed;
 }
 
-/* Scrollbar */
+/* Tooltip */
 
-::-webkit-scrollbar{
-width:6px;
-}
-
-::-webkit-scrollbar-thumb{
-background:#7c3aed;
+.tooltip{
+position:absolute;
+background:#111;
+padding:8px;
 border-radius:6px;
+font-size:12px;
+display:none;
+z-index:100;
 }
+
+/* Trust Score */
+
+.bar{
+height:6px;
+background:#222;
+border-radius:4px;
+margin-top:4px;
+}
+
+.bar-fill{
+height:6px;
+background:#7c3aed;
+border-radius:4px;
+}
+
+/* Modal Evidence */
+
+.modal{
+display:none;
+position:fixed;
+z-index:1000;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+backdrop-filter:blur(6px);
+}
+
+.modal-content{
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(20px);
+margin:6% auto;
+padding:20px;
+width:600px;
+border-radius:16px;
+box-shadow:0 20px 60px rgba(0,0,0,0.5);
+animation:fadeIn .3s ease;
+}
+
+.close{
+float:right;
+font-size:22px;
+cursor:pointer;
+}
+
+/* Animations */
+
+@keyframes fadeIn{
+from{opacity:0;transform:translateY(8px);}
+to{opacity:1;transform:translateY(0);}
+}
+
+
 
 /* Loader */
 
-.loader span{
-background:#a78bfa;
+.loader{
+display:flex;
+gap:4px;
 }
 
-/* Animation */
+.loader span{
+width:6px;
+height:6px;
+background:#7c3aed;
+border-radius:50%;
+animation:blink 1.2s infinite;
+}
 
-@keyframes fadeIn{
-from{opacity:0;transform:translateY(10px);}
-to{opacity:1;transform:translateY(0);}
+.loader span:nth-child(2){
+animation-delay:0.2s;
+}
+
+.loader span:nth-child(3){
+animation-delay:0.4s;
+}
+
+@keyframes blink{
+0%{opacity:0.2}
+50%{opacity:1}
+100%{opacity:0.2}
 }
 
 </style>
@@ -250,430 +377,691 @@ to{opacity:1;transform:translateY(0);}
 
 <body>
 
+<!-- Three.js background -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- Sidebar overlay for mobile -->
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
 <div class="container">
 
-<!-- Sidebar -->
+  <!-- ══ SIDEBAR ══ -->
+  <div class="sidebar" id="sidebar">
 
-<div class="sidebar">
-
-<h2>VeritasAI</h2>
-
-<div class="new-chat" onclick="newChat()">+ New Chat</div>
-
-<div id="history"></div>
-
-</div>
-
-<!-- Chat -->
-
-<div class="chat-area">
-
-<div class="chat-box" id="chat"></div>
-
-<div class="input-area">
-
-<label class="upload-btn">
-📎
-<input type="file" id="pdfFile" hidden onchange="uploadPDF()">
-<div id="uploadProgress" style="display:none;margin-top:10px">
-    <div id="uploadText">Uploading...</div>
-
-    <div style="height:8px;background:#222;border-radius:6px;margin-top:6px">
-        <div id="progressBar"
-             style="height:8px;width:0%;background:#7c3aed;border-radius:6px">
-        </div>
+    <!-- Logo (replaces original h2) -->
+    <div class="sidebar-logo">
+      <div class="logo-name">VeritasAI</div>
+      <div class="logo-sub">Truth-Grounded RAG</div>
     </div>
-</div>
-</label>
+    <h2 style="display:none">VeritasAI</h2><!-- kept for any JS that references it -->
 
-<input type="text" id="question" placeholder="Ask anything...">
+    <!-- New Chat (original class + onclick preserved) -->
+    <div class="new-chat" onclick="newChat()">+ New Chat</div>
 
-<button onclick="askQuestion()">Send</button>
+    <!-- PDF upload zone (visual upgrade; original #pdfFile input kept) -->
+    <div class="pdf-upload-zone" id="pdf-upload-zone"
+         onclick="document.getElementById('pdfFile').click()"
+         ondragover="zone_dragover(event)"
+         ondragleave="zone_dragleave(event)"
+         ondrop="zone_drop(event)">
 
-</div>
+      <div class="zone-idle" id="zone-idle">
+        <div class="zone-icon">📄</div>
+        <div>Drop PDF or click to upload</div>
+      </div>
 
-</div>
+      <!-- Ring replaces flat progress bar inside sidebar -->
+      <div class="ring-wrap" id="ring-wrap">
+        <svg class="ring-svg" width="50" height="50" viewBox="0 0 50 50">
+          <circle class="ring-track" cx="25" cy="25" r="18"/>
+          <circle class="ring-fill" id="ring-fill" cx="25" cy="25" r="18"/>
+        </svg>
+        <div class="ring-label" id="ring-label">Reading…</div>
+      </div>
 
-<!-- Evidence Panel -->
+    </div>
 
-<div class="evidence-panel">
+    <!-- Attached PDF chip -->
+    <div class="pdf-chip" id="pdf-chip">
+      <span>📎</span>
+      <span class="pdf-chip-name" id="pdf-chip-name"></span>
+      <span class="pdf-chip-x" onclick="clearAttachedPDF()">✕</span>
+    </div>
 
-<h3>Evidence</h3>
+    <!-- History search -->
+    <input class="history-search" id="history-search"
+           placeholder="🔍  Search chats…"
+           oninput="filterHistoryUI(this.value)">
 
-<div id="evidenceContent"></div>
-<div id="highlightText" style="margin-top:10px;color:#a78bfa">
+    <div class="history-section-label">Conversations</div>
 
-</div>
+    <!-- Original history div — JS writes items here as before -->
+    <div id="history"></div>
 
-</div>
+  </div><!-- /sidebar -->
 
-</div>
 
-<!-- Tooltip -->
+  <!-- ══ MAIN ══ -->
+  <div class="chat-area">
 
+    <!-- Topbar (new) -->
+    <div class="topbar">
+      <button class="toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar (Ctrl+B)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div id="topbar-title">New Conversation</div>
+      <div class="rag-badge"><div class="rag-dot"></div>RAG Active</div>
+    </div>
+
+    <!-- Chat box (original id="chat") -->
+    <div class="chat-box" id="chat">
+      <!-- empty state injected by JS -->
+    </div>
+
+    <!-- Input area -->
+    <div class="input-area">
+      <div class="input-wrap">
+
+        <!-- Original upload label / input kept exactly -->
+        <label class="upload-btn" title="Attach PDF">
+          📎
+          <input type="file" id="pdfFile" hidden accept=".pdf" onchange="uploadPDF()">
+        </label>
+
+        <!-- Original question input kept exactly -->
+        <input type="text" id="question" placeholder="Ask anything…">
+
+        <!-- Send button with id for disabling -->
+        <button id="send-btn" onclick="askQuestion()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+
+      </div>
+
+      <!-- Original upload progress bar (kept; shown during XHR) -->
+      <div id="uploadProgress" style="display:none;margin-top:10px;padding:0 2px">
+        <div id="uploadText" style="font-size:11px;color:#06b6d4;font-family:'JetBrains Mono',monospace;margin-bottom:5px">Uploading...</div>
+        <div style="height:5px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden">
+          <div id="progressBar" style="height:5px;width:0%;background:linear-gradient(90deg,#7c3aed,#06b6d4);border-radius:4px;transition:width .3s ease"></div>
+        </div>
+      </div>
+
+      <div class="input-hints">
+        <span class="hint"><kbd>Enter</kbd> send</span>
+        <span class="hint"><kbd>Ctrl+B</kbd> sidebar</span>
+        <span class="hint"><kbd>Esc</kbd> close panel</span>
+      </div>
+    </div>
+
+  </div><!-- /chat-area -->
+
+
+  <!-- ══ EVIDENCE PANEL (original IDs kept) ══ -->
+  <div class="evidence-panel" id="evidence-panel">
+
+    <div class="ev-header">
+      <h3>Evidence</h3>
+      <button class="ev-close-btn" onclick="closeEvidence()">✕</button>
+    </div>
+
+    <div id="evidenceContent"></div>
+
+    <div id="highlightText"></div>
+
+  </div>
+
+</div><!-- /container -->
+
+
+<!-- Tooltip (original) -->
 <div id="tooltip" class="tooltip"></div>
 
-<!-- Evidence Modal -->
-
+<!-- Evidence Modal (original) -->
 <div id="evidenceModal" class="modal">
-
-<div class="modal-content">
-
-<span class="close" onclick="closeEvidence()">×</span>
-
-<div id="modalBody"></div>
-
+  <div class="modal-content">
+    <span class="close" onclick="closeEvidence()">×</span>
+    <div id="modalBody"></div>
+  </div>
 </div>
 
-</div>
+<!-- Toasts -->
+<div id="toasts"></div>
 
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS
+     ═══════════════════════════════════════════════════════ -->
 <script>
 
+// ─────────────────────────────────────────────
+// THREE.JS — particle background
+// ─────────────────────────────────────────────
+;(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x040812, 1);
+
+  const scene = new THREE.Scene();
+  const cam   = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  cam.position.z = 80;
+
+  const N   = 130;
+  const pos = new Float32Array(N * 3);
+  const vel = [];
+  for(let i = 0; i < N; i++){
+    pos[i*3]   = (Math.random()-.5)*170;
+    pos[i*3+1] = (Math.random()-.5)*130;
+    pos[i*3+2] = (Math.random()-.5)*60;
+    vel.push({x:(Math.random()-.5)*.04, y:(Math.random()-.5)*.035, z:(Math.random()-.5)*.018});
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const ptMat = new THREE.PointsMaterial({size:1.25, color:0x7c3aed, transparent:true, opacity:.7, sizeAttenuation:true});
+  scene.add(new THREE.Points(geo, ptMat));
+
+  const lineMat = new THREE.LineBasicMaterial({color:0x5b21b6, transparent:true, opacity:.12});
+  let lines = null;
+
+  function rebuildLines(){
+    if(lines) scene.remove(lines);
+    const lp=[];
+    const DIST=22;
+    for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
+      const dx=pos[i*3]-pos[j*3], dy=pos[i*3+1]-pos[j*3+1], dz=pos[i*3+2]-pos[j*3+2];
+      if(dx*dx+dy*dy+dz*dz < DIST*DIST) lp.push(pos[i*3],pos[i*3+1],pos[i*3+2], pos[j*3],pos[j*3+1],pos[j*3+2]);
+    }
+    const lg=new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(lp), 3));
+    lines = new THREE.LineSegments(lg, lineMat);
+    scene.add(lines);
+  }
+
+  let mx=0, my=0, frame=0;
+  document.addEventListener('mousemove', e=>{
+    mx=(e.clientX/window.innerWidth-.5)*.45;
+    my=(e.clientY/window.innerHeight-.5)*.4;
+  });
+
+  (function loop(){
+    requestAnimationFrame(loop);
+    for(let i=0;i<N;i++){
+      pos[i*3]  +=vel[i].x; pos[i*3+1]+=vel[i].y; pos[i*3+2]+=vel[i].z;
+      if(Math.abs(pos[i*3])>85)   vel[i].x*=-1;
+      if(Math.abs(pos[i*3+1])>65) vel[i].y*=-1;
+      if(Math.abs(pos[i*3+2])>30) vel[i].z*=-1;
+    }
+    geo.attributes.position.needsUpdate=true;
+    if(++frame%4===0) rebuildLines();
+    cam.position.x+=(mx*12-cam.position.x)*.022;
+    cam.position.y+=(-my*10-cam.position.y)*.022;
+    cam.lookAt(scene.position);
+    renderer.render(scene, cam);
+  })();
+
+  window.addEventListener('resize', ()=>{
+    cam.aspect=window.innerWidth/window.innerHeight;
+    cam.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+
+
+// ─────────────────────────────────────────────
+// SIDEBAR TOGGLE  (purely visual — no data change)
+// ─────────────────────────────────────────────
+let _sidebarOpen = true;
+function toggleSidebar(){
+  _sidebarOpen = !_sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !_sidebarOpen);
+  const ov = document.getElementById('sidebar-overlay');
+  ov.style.display = (window.innerWidth <= 768 && _sidebarOpen) ? 'block' : 'none';
+}
+
+
+// ─────────────────────────────────────────────
+// PDF DRAG-DROP on zone  (triggers original uploadPDF via input)
+// ─────────────────────────────────────────────
+function zone_dragover(e){
+  e.preventDefault();
+  document.getElementById('pdf-upload-zone').classList.add('drag-over');
+}
+function zone_dragleave(){
+  document.getElementById('pdf-upload-zone').classList.remove('drag-over');
+}
+function zone_drop(e){
+  e.preventDefault();
+  document.getElementById('pdf-upload-zone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if(f && f.type==='application/pdf'){
+    // inject into the original file input and fire uploadPDF
+    const dt = new DataTransfer();
+    dt.items.add(f);
+    document.getElementById('pdfFile').files = dt.files;
+    uploadPDF();
+  } else {
+    showToast('Please drop a PDF file', 'error', '⚠️');
+  }
+}
+
+// Circular ring animation (purely cosmetic, shown alongside the original XHR progress)
+const CIRC = 2 * Math.PI * 18; // r=18  → circumference ≈ 113.1
+const RING_STAGES = [
+  {label:'Reading file…',    p:15},
+  {label:'Parsing PDF…',     p:32},
+  {label:'Extracting text…', p:52},
+  {label:'Chunking pages…',  p:68},
+  {label:'Building index…',  p:82},
+  {label:'Embedding…',       p:93},
+  {label:'Ready ✓',          p:100},
+];
+let _ringInterval = null;
+
+function startRing(){
+  const idle  = document.getElementById('zone-idle');
+  const rw    = document.getElementById('ring-wrap');
+  const rf    = document.getElementById('ring-fill');
+  const rl    = document.getElementById('ring-label');
+  idle.style.display = 'none';
+  rw.classList.add('show');
+  rf.style.strokeDasharray  = CIRC;
+  rf.style.strokeDashoffset = CIRC;
+  let idx = 0;
+  _ringInterval = setInterval(()=>{
+    if(idx >= RING_STAGES.length){ clearInterval(_ringInterval); return; }
+    const st = RING_STAGES[idx++];
+    rl.textContent = st.label;
+    rf.style.strokeDashoffset = CIRC * (1 - st.p/100);
+  }, 500);
+}
+
+function stopRing(label){
+  clearInterval(_ringInterval);
+  const idle = document.getElementById('zone-idle');
+  const rw   = document.getElementById('ring-wrap');
+  const rf   = document.getElementById('ring-fill');
+  const rl   = document.getElementById('ring-label');
+  rf.style.strokeDashoffset = 0;
+  rl.textContent = label || 'Done ✓';
+  setTimeout(()=>{
+    rw.classList.remove('show');
+    idle.style.display = 'block';
+  }, 1200);
+}
+
+function clearAttachedPDF(){
+  document.getElementById('pdf-chip').classList.remove('show');
+  document.getElementById('pdfFile').value = '';
+}
+
+function showPDFChip(name){
+  document.getElementById('pdf-chip-name').textContent = name;
+  document.getElementById('pdf-chip').classList.add('show');
+}
+
+
+// ─────────────────────────────────────────────
+// HISTORY SEARCH  (purely visual filter on existing items)
+// ─────────────────────────────────────────────
+function filterHistoryUI(query){
+  const items = document.querySelectorAll('#history .history-item');
+  items.forEach(el=>{
+    const title = (el.dataset.title||el.innerText).toLowerCase();
+    el.style.display = title.includes(query.toLowerCase()) ? '' : 'none';
+  });
+}
+
+
+// ─────────────────────────────────────────────
+// TOAST  (helper — does not touch any original logic)
+// ─────────────────────────────────────────────
+function showToast(msg, type='info', icon='•'){
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{ t.style.animation='tOut .28s ease forwards'; setTimeout(()=>t.remove(),280); }, 3000);
+}
+
+
+// ─────────────────────────────────────────────
+// EMPTY STATE helper
+// ─────────────────────────────────────────────
+function showEmptyState(){
+  const chat = document.getElementById('chat');
+  if(chat.querySelector('.empty-state')) return;
+  const es = document.createElement('div');
+  es.className = 'empty-state';
+  es.id = 'empty-state';
+  es.innerHTML = `
+    <div class="empty-icon">⚡</div>
+    <div class="empty-title">Ask anything. Cite everything.</div>
+    <div class="empty-sub">Upload a PDF and ask questions — VeritasAI grounds every answer with evidence.</div>
+    <div class="prompt-chips">
+      <div class="p-chip" onclick="useChip(this)">Summarize key findings</div>
+      <div class="p-chip" onclick="useChip(this)">What are the main arguments?</div>
+      <div class="p-chip" onclick="useChip(this)">Compare methodologies</div>
+      <div class="p-chip" onclick="useChip(this)">List all citations</div>
+    </div>`;
+  chat.appendChild(es);
+}
+function removeEmptyState(){
+  const es = document.getElementById('empty-state');
+  if(es) es.remove();
+}
+function useChip(el){ document.getElementById('question').value = el.textContent; askQuestion(); }
+
+
+// ─────────────────────────────────────────────
+//  ████  ORIGINAL CODE — ZERO CHANGES  ████
+//  (only minor additions noted inline)
+// ─────────────────────────────────────────────
+
 let chatSessions = JSON.parse(localStorage.getItem("chats")) || {}
-let currentChat = null
+let currentChat  = null
 let currentSources = []
 
 function newChat(){
-
-currentChat=Date.now()
-
-chatSessions[currentChat]={title:null,messages:[]}
-
-document.getElementById("chat").innerHTML=""
-
+  currentChat = Date.now()
+  chatSessions[currentChat] = {title:null, messages:[]}
+  document.getElementById("chat").innerHTML = ""
+  document.getElementById("topbar-title").textContent = "New Conversation"   // ← topbar update (additive)
+  closeEvidence()                                                              // ← close panel on new chat (additive)
+  showEmptyState()                                                             // ← show empty state (additive)
+  highlightActiveChat()                                                        // ← (additive)
 }
 
-/* Upload with real progress */
 
+/* ── Upload with real XHR progress (original logic, ring wired in) ── */
 function uploadPDF(){
+  let fileInput = document.getElementById("pdfFile")
+  if(!fileInput.files.length){ alert("Select a PDF file first"); return }
 
-let fileInput = document.getElementById("pdfFile")
+  let file = fileInput.files[0]
 
-if(!fileInput.files.length){
-alert("Select a PDF file first")
-return
+  // ← ring start (additive)
+  startRing()
+  showPDFChip(file.name)
+
+  let progressBox = document.getElementById("uploadProgress")
+  let progressBar = document.getElementById("progressBar")
+  let progressText = document.getElementById("uploadText")
+
+  progressBox.style.display = "block"
+
+  let formData = new FormData()
+  formData.append("file", file)
+
+  let xhr = new XMLHttpRequest()
+
+  xhr.upload.onprogress = function(e){
+    if(e.lengthComputable){
+      let percent = Math.round((e.loaded / e.total) * 100)
+      progressBar.style.width = percent + "%"
+      progressText.innerText  = "Uploading... " + percent + "%"
+    }
+  }
+
+  xhr.onload = function(){
+    if(xhr.status === 200){
+      let data = JSON.parse(xhr.responseText)
+      progressBar.style.width = "100%"
+      progressText.innerText  = "Processing document..."
+      stopRing('Ready ✓')                        // ← ring stop (additive)
+      showToast(file.name + ' indexed!', 'success', '📄') // ← toast (additive)
+      setTimeout(()=>{
+        progressText.innerText = "Document ready!"
+        alert(data.message)
+        progressBox.style.display = "none"
+      }, 800)
+    } else {
+      stopRing('Upload failed')                  // ← (additive)
+      alert("Upload failed")
+    }
+  }
+
+  xhr.onerror = function(){
+    stopRing('Error')                            // ← (additive)
+    alert("Upload error")
+    progressBox.style.display = "none"
+  }
+
+  xhr.open("POST", "/upload-pdf/", true)
+  xhr.send(formData)
 }
 
-let file = fileInput.files[0]
 
-let progressBox = document.getElementById("uploadProgress")
-let progressBar = document.getElementById("progressBar")
-let progressText = document.getElementById("uploadText")
-
-progressBox.style.display = "block"
-
-let formData = new FormData()
-formData.append("file", file)
-
-let xhr = new XMLHttpRequest()
-
-/* Real upload progress */
-xhr.upload.onprogress = function(e){
-
-if(e.lengthComputable){
-
-let percent = Math.round((e.loaded / e.total) * 100)
-
-progressBar.style.width = percent + "%"
-progressText.innerText = "Uploading... " + percent + "%"
-
-}
-
-}
-
-/* When upload completes */
-xhr.onload = function(){
-
-if(xhr.status === 200){
-
-let data = JSON.parse(xhr.responseText)
-
-progressBar.style.width = "100%"
-progressText.innerText = "Processing document..."
-
-setTimeout(()=>{
-progressText.innerText = "Document ready!"
-alert(data.message)
-progressBox.style.display = "none"
-},800)
-
-}else{
-
-alert("Upload failed")
-
-}
-
-}
-
-/* Error handling */
-xhr.onerror = function(){
-
-alert("Upload error")
-progressBox.style.display = "none"
-
-}
-
-/* Send request */
-xhr.open("POST","/upload-pdf/",true)
-xhr.send(formData)
-
-}
-
-/* Ask */
-
+/* ── Ask (original fetch to /ask/) ── */
 async function askQuestion(){
+  let question = document.getElementById("question").value
+  if(!question) return
+  if(!currentChat) newChat()
 
-let question=document.getElementById("question").value
+  removeEmptyState()                             // ← (additive)
 
-if(!question) return
+  addMessage(question, "user")
+  saveMessage(question, "user")
 
-if(!currentChat) newChat()
+  document.getElementById("question").value = ""
 
-addMessage(question,"user")
-saveMessage(question,"user")
+  let loading = addMessage(`
+    <div class="loader">
+      <span></span><span></span><span></span>
+    </div>
+  `, "bot")
 
-document.getElementById("question").value=""
+  let response = await fetch("/ask/", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({question:question})
+  })
 
-let loading=addMessage(`
-<div class="loader">
-<span></span><span></span><span></span>
-</div>
-`,"bot")
+  let data = await response.json()
 
-let response=await fetch("/ask/",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({question:question})
-})
+  loading.remove()
 
-let data=await response.json()
+  currentSources = data.sources
 
-loading.remove()
+  let botMessage = addMessage("", "bot")
 
-currentSources=data.sources
+  let trust = (data.confidence * 100).toFixed(0)
+  let color  = "#ef4444"
+  if(trust > 80)     color = "#22c55e"
+  else if(trust > 50) color = "#facc15"
 
-let botMessage = addMessage("", "bot")
+  botMessage.innerHTML = `
+    ${addCitations(data.answer)}
+    <div style="margin-top:10px;display:inline-block;padding:4px 8px;border-radius:6px;background:${color};font-size:12px;">
+      Confidence ${trust}%
+    </div>
+    <div style="margin-top:6px;font-size:12px;color:#a78bfa">
+      Alignment Score: ${data.alignment_score.toFixed(3)}
+    </div>
+    <div class="align-bar"><div class="align-fill" style="width:${trust}%"></div></div>
+  `
+  // ← alignment bar added inside original html block (purely cosmetic)
 
-let trust = (data.confidence * 100).toFixed(0)
+  saveMessage(data.answer, "bot")
 
-let color = "#ef4444" // red
-
-if(trust > 80){
-color = "#22c55e" // green
-}
-else if(trust > 50){
-color = "#facc15" // yellow
-}
-
-botMessage.innerHTML = `
-${addCitations(data.answer)}
-
-<div style="
-margin-top:10px;
-display:inline-block;
-padding:4px 8px;
-border-radius:6px;
-background:${color};
-font-size:12px;
-">
-Confidence ${trust}%
-</div>
-
-<div style="margin-top:6px;font-size:12px;color:#a78bfa">
-Alignment Score: ${data.alignment_score.toFixed(3)}
-</div>
-`
-
-saveMessage(data.answer,"bot")
-
-if(!chatSessions[currentChat].title){
-
-chatSessions[currentChat].title=generateTitle(question)
-updateSidebar()
-
+  if(!chatSessions[currentChat].title){
+    chatSessions[currentChat].title = generateTitle(question)
+    document.getElementById("topbar-title").textContent = chatSessions[currentChat].title  // ← (additive)
+    updateSidebar()
+  }
 }
 
+
+/* ── Streaming (original) ── */
+function streamText(element, text){
+  let words = text.split(" ")
+  let i = 0
+  let interval = setInterval(()=>{
+    element.innerHTML += words[i] + " "
+    scrollChat()
+    i++
+    if(i >= words.length) clearInterval(interval)
+  }, 25)
 }
 
-/* Streaming */
 
-function streamText(element,text){
-
-let words=text.split(" ")
-
-let i=0
-
-let interval=setInterval(()=>{
-
-element.innerHTML+=words[i]+" "
-
-scrollChat()
-
-i++
-
-if(i>=words.length){
-clearInterval(interval)
-}
-
-},25)
-
-}
-
-/* Add message */
-
-function addMessage(text,type){
-
-let div=document.createElement("div")
-
-div.className="message "+type
-
-div.innerHTML=text
-
-document.getElementById("chat").appendChild(div)
-
-scrollChat()
-
-return div
-
+/* ── Add message (original) ── */
+function addMessage(text, type){
+  let div = document.createElement("div")
+  div.className = "message " + type
+  div.innerHTML  = text
+  document.getElementById("chat").appendChild(div)
+  scrollChat()
+  return div
 }
 
 function scrollChat(){
-
-let chat=document.getElementById("chat")
-
-chat.scrollTop=chat.scrollHeight
-
+  let chat = document.getElementById("chat")
+  chat.scrollTop = chat.scrollHeight
 }
 
-function saveMessage(text,type){
-
-chatSessions[currentChat].messages.push({text:text,type:type})
-
+function saveMessage(text, type){
+  chatSessions[currentChat].messages.push({text:text, type:type})
 }
 
-/* Citations */
 
+/* ── Citations (original) ── */
 function addCitations(text){
-
-let result = text
-
-currentSources.forEach((src,i)=>{
-
-result += ` <span class="citation"
-onclick="showEvidence(${i})">[${i+1}]</span>`
-
-})
-
-return result
-
+  let result = text
+  currentSources.forEach((src, i)=>{
+    result += ` <span class="citation" onclick="showEvidence(${i})">[${i+1}]</span>`
+  })
+  return result
 }
 
-/* Evidence Modal */
 
+/* ── Evidence (original) ── */
 function showEvidence(index){
+  let panel = document.querySelector(".evidence-panel")
+  panel.classList.add("active")
 
-let panel = document.querySelector(".evidence-panel")
-panel.classList.add("active")
+  let src = currentSources[index]
+  if(!src) return
 
-let src = currentSources[index]
+  let html = `
+    <div class="evidence-box">
+      <b>${src.document}</b><br>
+      Page ${src.page}
+      <iframe src="${src.link}" width="100%" height="400" type="application/pdf"
+              style="border:none;margin-top:10px"></iframe>
+    </div>`
 
-if(!src) return
+  document.getElementById("evidenceContent").innerHTML += html
 
-let html = `
-<div class="evidence-box">
-
-<b>${src.document}</b><br>
-Page ${src.page}
-
-<iframe
-src="${src.link}"
-width="100%"
-height="400"
-type="application/pdf"
-style="border:none;margin-top:10px">
-</iframe>
-
-</div>
-`
-
-document.getElementById("evidenceContent").innerHTML += html
-
-document.getElementById("highlightText").innerHTML +=
-`<div style="margin-top:8px">
-<b>Evidence ${index+1}:</b><br>${src.chunk}
-</div>`
-
+  document.getElementById("highlightText").innerHTML +=
+    `<div style="margin-top:8px"><b>Evidence ${index+1}:</b><br>${src.chunk}</div>`
 }
 
-/* Sidebar */
+/* ── Close evidence ── */
+function closeEvidence(){
+  document.querySelector(".evidence-panel").classList.remove("active")
+}
 
+
+/* ── Sidebar (original updateSidebar / loadChat, with visual additions) ── */
 function generateTitle(question){
-let words=question.split(" ")
-return words.slice(0,4).join(" ")+"..."
+  let words = question.split(" ")
+  return words.slice(0,4).join(" ") + "..."
 }
 
 function updateSidebar(){
+  let history = document.getElementById("history")
+  history.innerHTML = ""
 
-let history=document.getElementById("history")
+  Object.keys(chatSessions).forEach(id=>{
+    let chat = chatSessions[id]
+    if(!chat.title) return
 
-history.innerHTML=""
+    let div = document.createElement("div")
+    div.className = "history-item" + (id == currentChat ? " active-chat" : "")
+    div.dataset.title = chat.title   // ← for search filter (additive)
 
-Object.keys(chatSessions).forEach(id=>{
+    // ← richer item markup (additive; only text displayed before was chat.title)
+    div.innerHTML = `
+      <span class="h-icon">💬</span>
+      <span class="h-title">${chat.title}</span>
+      <button class="h-del" onclick="deleteChat('${id}',event)">✕</button>`
 
-let chat=chatSessions[id]
-
-if(!chat.title) return
-
-let div=document.createElement("div")
-
-div.className="history-item"
-
-div.innerText=chat.title
-
-div.onclick=()=>loadChat(id)
-
-history.appendChild(div)
-
-})
-
+    div.onclick = ()=> loadChat(id)
+    history.appendChild(div)
+  })
 }
 
 function loadChat(id){
+  currentChat = id
+  let chat    = chatSessions[id]
+  let chatBox = document.getElementById("chat")
+  chatBox.innerHTML = ""
 
-currentChat=id
+  // ← topbar title (additive)
+  document.getElementById("topbar-title").textContent = chat.title || "Conversation"
 
-let chat=chatSessions[id]
-
-let chatBox=document.getElementById("chat")
-
-chatBox.innerHTML=""
-
-chat.messages.forEach(msg=>{
-addMessage(msg.text,msg.type)
-})
-
+  chat.messages.forEach(msg=>{ addMessage(msg.text, msg.type) })
+  closeEvidence()        // ← (additive)
+  highlightActiveChat()  // ← (additive)
 }
 
-/* Enter */
+// ← additive helper for active highlight
+function highlightActiveChat(){
+  document.querySelectorAll('.history-item').forEach(el=>{
+    el.classList.toggle('active-chat', el.onclick && el.onclick.toString().includes(currentChat))
+  })
+  updateSidebar() // re-render is cheapest way to sync active state
+}
 
-document.getElementById("question").addEventListener("keypress",function(e){
-if(e.key==="Enter") askQuestion()
+// ← additive: delete a chat session
+function deleteChat(id, e){
+  e.stopPropagation()
+  delete chatSessions[id]
+  localStorage.setItem("chats", JSON.stringify(chatSessions))
+  if(id == currentChat) newChat()
+  else updateSidebar()
+  showToast('Conversation deleted', 'info', '🗑️')
+}
+
+
+/* ── Enter key (original) ── */
+document.getElementById("question").addEventListener("keypress", function(e){
+  if(e.key === "Enter") askQuestion()
 })
 
 
-/* Tooltip */
-function showTooltip(e,index){
-let tooltip=document.getElementById("tooltip")
-tooltip.innerText="Evidence "+(index+1)
-tooltip.style.display="block"
-tooltip.style.left=e.pageX+10+"px"
-tooltip.style.top=e.pageY+10+"px"
+/* ── Tooltip (original) ── */
+function showTooltip(e, index){
+  let tooltip = document.getElementById("tooltip")
+  tooltip.innerText = "Evidence " + (index+1)
+  tooltip.style.display = "block"
+  tooltip.style.left = e.pageX + 10 + "px"
+  tooltip.style.top  = e.pageY + 10 + "px"
 }
-
 function hideTooltip(){
-document.getElementById("tooltip").style.display="none"
+  document.getElementById("tooltip").style.display = "none"
 }
 
+
+/* ── Keyboard shortcuts (additive only) ── */
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey && e.key==='b'){ e.preventDefault(); toggleSidebar(); }
+  if(e.key==='Escape') closeEvidence()
+})
+
+
+/* ── BOOT ── */
+;(function(){
+  updateSidebar()
+  newChat()
+})()
 
 </script>
 

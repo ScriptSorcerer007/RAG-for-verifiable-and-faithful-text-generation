@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>VeritasAI - Truth Grounded RAG</title>
+
+<style>
+
+body{
+margin:0;
+font-family: 'Inter', Arial;
+color:white;
+overflow:hidden;
+
+background:
+radial-gradient(circle at 10% 20%,rgba(124,58,237,.35),transparent 40%),
+radial-gradient(circle at 90% 30%,rgba(91,33,182,.35),transparent 40%),
+radial-gradient(circle at 50% 90%,rgba(167,139,250,.25),transparent 40%),
+linear-gradient(180deg,#020617,#020617,#0f172a);
+}
+
+/* Layout */
+
+.container{
+display:flex;
+height:100vh;
+}
+
+/* Sidebar */
+
+.sidebar{
+width:260px;
+background:rgba(255,255,255,0.03);
+backdrop-filter:blur(30px);
+padding:20px;
+border-right:1px solid rgba(255,255,255,0.08);
+display:flex;
+flex-direction:column;
+box-shadow:inset 0 0 30px rgba(124,58,237,.15);
+}
+
+.sidebar h2{
+margin-top:0;
+font-weight:600;
+color:#c4b5fd;
+}
+
+/* Button glow */
+
+.new-chat{
+background:linear-gradient(135deg,#7c3aed,#5b21b6);
+padding:12px;
+border-radius:14px;
+text-align:center;
+cursor:pointer;
+margin-bottom:20px;
+transition:.25s;
+box-shadow:0 0 15px rgba(124,58,237,.4);
+}
+
+.new-chat:hover{
+transform:translateY(-2px);
+box-shadow:0 0 25px rgba(124,58,237,.8);
+}
+
+/* History */
+
+.history-item{
+background:rgba(255,255,255,0.05);
+padding:12px;
+margin-top:10px;
+border-radius:10px;
+cursor:pointer;
+transition:.25s;
+}
+
+.history-item:hover{
+background:#7c3aed;
+transform:translateX(6px);
+}
+
+/* Chat Area */
+
+.chat-area{
+flex:1;
+display:flex;
+flex-direction:column;
+padding:20px;
+}
+
+/* Chat box */
+
+.chat-box{
+flex:1;
+overflow-y:auto;
+padding:20px;
+border-radius:20px;
+
+background:rgba(255,255,255,0.03);
+backdrop-filter:blur(20px);
+
+box-shadow:
+0 0 40px rgba(124,58,237,.15),
+inset 0 0 20px rgba(255,255,255,0.03);
+}
+
+/* Messages */
+
+.message{
+margin-bottom:18px;
+padding:14px 18px;
+border-radius:16px;
+max-width:65%;
+line-height:1.6;
+font-size:14px;
+animation:fadeIn .25s ease;
+}
+
+.user{
+background:linear-gradient(135deg,#7c3aed,#6d28d9);
+margin-left:auto;
+box-shadow:0 0 20px rgba(124,58,237,.6);
+}
+
+.bot{
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.08);
+box-shadow:0 0 20px rgba(124,58,237,.15);
+}
+
+/* Input */
+
+.input-area{
+display:flex;
+gap:10px;
+padding:15px;
+margin-top:10px;
+
+background:rgba(255,255,255,0.03);
+border-radius:16px;
+backdrop-filter:blur(20px);
+
+box-shadow:0 0 25px rgba(124,58,237,.2);
+}
+
+input[type=text]{
+flex:1;
+padding:12px;
+border-radius:10px;
+border:none;
+outline:none;
+background:rgba(255,255,255,0.08);
+color:white;
+}
+
+/* Button */
+
+button{
+padding:12px 18px;
+border:none;
+border-radius:10px;
+background:linear-gradient(135deg,#7c3aed,#5b21b6);
+color:white;
+cursor:pointer;
+transition:.25s;
+box-shadow:0 0 10px rgba(124,58,237,.5);
+}
+
+button:hover{
+transform:translateY(-2px);
+box-shadow:0 0 20px rgba(124,58,237,.9);
+}
+
+/* Evidence panel */
+
+.evidence-panel{
+width:300px;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(30px);
+border-left:1px solid rgba(255,255,255,0.08);
+padding:20px;
+
+box-shadow:-10px 0 40px rgba(124,58,237,.2);
+
+transform:translateX(100%);
+transition:.35s;
+}
+
+.evidence-panel.active{
+transform:translateX(0);
+}
+
+.evidence-box{
+background:rgba(255,255,255,0.05);
+padding:12px;
+border-radius:12px;
+margin-bottom:12px;
+border:1px solid rgba(255,255,255,0.08);
+transition:.2s;
+}
+
+.evidence-box:hover{
+transform:translateY(-3px);
+background:rgba(255,255,255,0.08);
+}
+
+/* Citation */
+
+.citation{
+color:#c4b5fd;
+cursor:pointer;
+font-weight:bold;
+padding:2px 6px;
+border-radius:6px;
+transition:.2s;
+}
+
+.citation:hover{
+background:#7c3aed;
+color:white;
+box-shadow:0 0 10px #7c3aed;
+}
+
+/* Scrollbar */
+
+::-webkit-scrollbar{
+width:6px;
+}
+
+::-webkit-scrollbar-thumb{
+background:#7c3aed;
+border-radius:6px;
+}
+
+/* Loader */
+
+.loader span{
+background:#a78bfa;
+}
+
+/* Animation */
+
+@keyframes fadeIn{
+from{opacity:0;transform:translateY(10px);}
+to{opacity:1;transform:translateY(0);}
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- Sidebar -->
+
+<div class="sidebar">
+
+<h2>VeritasAI</h2>
+
+<div class="new-chat" onclick="newChat()">+ New Chat</div>
+
+<div id="history"></div>
+
+</div>
+
+<!-- Chat -->
+
+<div class="chat-area">
+
+<div class="chat-box" id="chat"></div>
+
+<div class="input-area">
+
+<label class="upload-btn">
+📎
+<input type="file" id="pdfFile" hidden onchange="uploadPDF()">
+<div id="uploadProgress" style="display:none;margin-top:10px">
+    <div id="uploadText">Uploading...</div>
+
+    <div style="height:8px;background:#222;border-radius:6px;margin-top:6px">
+        <div id="progressBar"
+             style="height:8px;width:0%;background:#7c3aed;border-radius:6px">
+        </div>
+    </div>
+</div>
+</label>
+
+<input type="text" id="question" placeholder="Ask anything...">
+
+<button onclick="askQuestion()">Send</button>
+
+</div>
+
+</div>
+
+<!-- Evidence Panel -->
+
+<div class="evidence-panel">
+
+<h3>Evidence</h3>
+
+<div id="evidenceContent"></div>
+<div id="highlightText" style="margin-top:10px;color:#a78bfa">
+
+</div>
+
+</div>
+
+</div>
+
+<!-- Tooltip -->
+
+<div id="tooltip" class="tooltip"></div>
+
+<!-- Evidence Modal -->
+
+<div id="evidenceModal" class="modal">
+
+<div class="modal-content">
+
+<span class="close" onclick="closeEvidence()">×</span>
+
+<div id="modalBody"></div>
+
+</div>
+
+</div>
+
+<script>
+
+let chatSessions = JSON.parse(localStorage.getItem("chats")) || {}
+let currentChat = null
+let currentSources = []
+
+function newChat(){
+
+currentChat=Date.now()
+
+chatSessions[currentChat]={title:null,messages:[]}
+
+document.getElementById("chat").innerHTML=""
+
+}
+
+/* Upload with real progress */
+
+function uploadPDF(){
+
+let fileInput = document.getElementById("pdfFile")
+
+if(!fileInput.files.length){
+alert("Select a PDF file first")
+return
+}
+
+let file = fileInput.files[0]
+
+let progressBox = document.getElementById("uploadProgress")
+let progressBar = document.getElementById("progressBar")
+let progressText = document.getElementById("uploadText")
+
+progressBox.style.display = "block"
+
+let formData = new FormData()
+formData.append("file", file)
+
+let xhr = new XMLHttpRequest()
+
+/* Real upload progress */
+xhr.upload.onprogress = function(e){
+
+if(e.lengthComputable){
+
+let percent = Math.round((e.loaded / e.total) * 100)
+
+progressBar.style.width = percent + "%"
+progressText.innerText = "Uploading... " + percent + "%"
+
+}
+
+}
+
+/* When upload completes */
+xhr.onload = function(){
+
+if(xhr.status === 200){
+
+let data = JSON.parse(xhr.responseText)
+
+progressBar.style.width = "100%"
+progressText.innerText = "Processing document..."
+
+setTimeout(()=>{
+progressText.innerText = "Document ready!"
+alert(data.message)
+progressBox.style.display = "none"
+},800)
+
+}else{
+
+alert("Upload failed")
+
+}
+
+}
+
+/* Error handling */
+xhr.onerror = function(){
+
+alert("Upload error")
+progressBox.style.display = "none"
+
+}
+
+/* Send request */
+xhr.open("POST","/upload-pdf/",true)
+xhr.send(formData)
+
+}
+
+/* Ask */
+
+async function askQuestion(){
+
+let question=document.getElementById("question").value
+
+if(!question) return
+
+if(!currentChat) newChat()
+
+addMessage(question,"user")
+saveMessage(question,"user")
+
+document.getElementById("question").value=""
+
+let loading=addMessage(`
+<div class="loader">
+<span></span><span></span><span></span>
+</div>
+`,"bot")
+
+let response=await fetch("/ask/",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({question:question})
+})
+
+let data=await response.json()
+
+loading.remove()
+
+currentSources=data.sources
+
+let botMessage = addMessage("", "bot")
+
+let trust = (data.confidence * 100).toFixed(0)
+
+let color = "#ef4444" // red
+
+if(trust > 80){
+color = "#22c55e" // green
+}
+else if(trust > 50){
+color = "#facc15" // yellow
+}
+
+botMessage.innerHTML = `
+${addCitations(data.answer)}
+
+<div style="
+margin-top:10px;
+display:inline-block;
+padding:4px 8px;
+border-radius:6px;
+background:${color};
+font-size:12px;
+">
+Confidence ${trust}%
+</div>
+
+<div style="margin-top:6px;font-size:12px;color:#a78bfa">
+Alignment Score: ${data.alignment_score.toFixed(3)}
+</div>
+`
+
+saveMessage(data.answer,"bot")
+
+if(!chatSessions[currentChat].title){
+
+chatSessions[currentChat].title=generateTitle(question)
+updateSidebar()
+
+}
+
+}
+
+/* Streaming */
+
+function streamText(element,text){
+
+let words=text.split(" ")
+
+let i=0
+
+let interval=setInterval(()=>{
+
+element.innerHTML+=words[i]+" "
+
+scrollChat()
+
+i++
+
+if(i>=words.length){
+clearInterval(interval)
+}
+
+},25)
+
+}
+
+/* Add message */
+
+function addMessage(text,type){
+
+let div=document.createElement("div")
+
+div.className="message "+type
+
+div.innerHTML=text
+
+document.getElementById("chat").appendChild(div)
+
+scrollChat()
+
+return div
+
+}
+
+function scrollChat(){
+
+let chat=document.getElementById("chat")
+
+chat.scrollTop=chat.scrollHeight
+
+}
+
+function saveMessage(text,type){
+
+chatSessions[currentChat].messages.push({text:text,type:type})
+
+}
+
+/* Citations */
+
+function addCitations(text){
+
+let result = text
+
+currentSources.forEach((src,i)=>{
+
+result += ` <span class="citation"
+onclick="showEvidence(${i})">[${i+1}]</span>`
+
+})
+
+return result
+
+}
+
+/* Evidence Modal */
+
+function showEvidence(index){
+
+let panel = document.querySelector(".evidence-panel")
+panel.classList.add("active")
+
+let src = currentSources[index]
+
+if(!src) return
+
+let html = `
+<div class="evidence-box">
+
+<b>${src.document}</b><br>
+Page ${src.page}
+
+<iframe
+src="${src.link}"
+width="100%"
+height="400"
+type="application/pdf"
+style="border:none;margin-top:10px">
+</iframe>
+
+</div>
+`
+
+document.getElementById("evidenceContent").innerHTML += html
+
+document.getElementById("highlightText").innerHTML +=
+`<div style="margin-top:8px">
+<b>Evidence ${index+1}:</b><br>${src.chunk}
+</div>`
+
+}
+
+/* Sidebar */
+
+function generateTitle(question){
+let words=question.split(" ")
+return words.slice(0,4).join(" ")+"..."
+}
+
+function updateSidebar(){
+
+let history=document.getElementById("history")
+
+history.innerHTML=""
+
+Object.keys(chatSessions).forEach(id=>{
+
+let chat=chatSessions[id]
+
+if(!chat.title) return
+
+let div=document.createElement("div")
+
+div.className="history-item"
+
+div.innerText=chat.title
+
+div.onclick=()=>loadChat(id)
+
+history.appendChild(div)
+
+})
+
+}
+
+function loadChat(id){
+
+currentChat=id
+
+let chat=chatSessions[id]
+
+let chatBox=document.getElementById("chat")
+
+chatBox.innerHTML=""
+
+chat.messages.forEach(msg=>{
+addMessage(msg.text,msg.type)
+})
+
+}
+
+/* Enter */
+
+document.getElementById("question").addEventListener("keypress",function(e){
+if(e.key==="Enter") askQuestion()
+})
+
+
+/* Tooltip */
+function showTooltip(e,index){
+let tooltip=document.getElementById("tooltip")
+tooltip.innerText="Evidence "+(index+1)
+tooltip.style.display="block"
+tooltip.style.left=e.pageX+10+"px"
+tooltip.style.top=e.pageY+10+"px"
+}
+
+function hideTooltip(){
+document.getElementById("tooltip").style.display="none"
+}
+
+
+</script>
+
+</body>
+</html>
