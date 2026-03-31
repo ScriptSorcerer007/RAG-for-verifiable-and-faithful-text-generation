@@ -240,21 +240,28 @@ def ask_question(request):
             # HYBRID RETRIEVAL
             # ===============================
 
+            # initialize retrievers
             hybrid = HybridRetriever(vectorstore, bm25)
-            hybrid_results = hybrid.retrieve(query, k=10)
-
-            print("Hybrid results:", len(hybrid_results))
-
-            # ===============================
-            # RERANKING
-            # ===============================
-
             reranker = ReRanker()
 
-            reranked_docs = reranker.rerank(query, hybrid_results, top_k=5)
+            # run hybrid retrieval
+            hybrid_results = hybrid.retrieve(query, k=10)
 
-            documents = reranked_docs
-            scores = [1.0] * len(documents)
+            # DEBUG
+            print("\n--- HYBRID RESULTS ---")
+            for doc, score in hybrid_results:
+                print("Hybrid Score:", score, "|", doc.page_content[:80])
+
+            hybrid_docs = [doc for doc, score in hybrid_results]
+
+            reranked_results = reranker.rerank(query, hybrid_docs, top_k=5)
+
+            print("\n--- RERANKED RESULTS ---")
+            for doc, score in reranked_results:
+                print("Rerank Score:", score, "|", doc.page_content[:80])
+
+            documents = [doc for doc, score in reranked_results]
+            scores = [float(score) for doc, score in reranked_results]
 
             # ===============================
             # BUILD CONTEXT
@@ -373,7 +380,7 @@ Return JSON:
 
                 sources.append({
                     "rank": i + 1,
-                    "score": scores[i],
+                    "score": float(scores[i]),
                     "document": doc.metadata["source"],
                     "page": doc.metadata["page"],
                     "chunk": doc.page_content,
