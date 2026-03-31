@@ -21,4 +21,4 @@ class ReRanker:
             reverse=True
         )
 
-        return [doc for doc, score in ranked[:top_k]]
+        return [(doc, score) for doc, score in ranked[:top_k]]
