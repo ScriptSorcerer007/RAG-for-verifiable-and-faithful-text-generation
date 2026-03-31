@@ -32,3 +32,29 @@ This project aims to address these issues by building a **verifiable RAG pipelin
 # Proposed Solution
 
 The system introduces a **multi-stage RAG architecture**:
+
+
+---
+
+# 📌 Project Progress
+
+### ✅ Phase 1 — Retrieval + Reranking Completed
+
+Implemented:
+- Hybrid Retrieval (FAISS + BM25)
+- Score Normalization & Fusion
+- Cross-Encoder Reranking
+- Context-aware Answer Generation
+- Verification & Confidence Scoring
+
+📄 Detailed Documentation:  
+👉 [Phase 1 Documentation](./PHASE_1_RAG_DOCUMENTATION.md)
+
+---
+
+### 🔄 Phase 2 — Query Intelligence (In Progress)
+
+Planned:
+- Query Classification
+- Multi-Query Expansion
+- Adaptive Retrieval
