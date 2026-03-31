@@ -3,6 +3,7 @@ import json
 import fitz
 import requests
 import re
+import math
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -261,8 +262,36 @@ def ask_question(request):
                 print("Rerank Score:", score, "|", doc.page_content[:80])
 
             documents = [doc for doc, score in reranked_results]
-            scores = [float(score) for doc, score in reranked_results]
+            raw_scores = [float(score) for doc, score in reranked_results]
 
+            # sigmoid for stability
+            def safe_sigmoid(x):
+                if x < -50:
+                    return 0.0
+                if x > 50:
+                    return 1.0
+                return 1 / (1 + math.exp(-x))
+            sigmoid_scores = [safe_sigmoid(s) for s in raw_scores]
+
+            # min-max for ranking sharpness
+            if not raw_scores:
+                scores = []
+            else:
+                min_s = min(raw_scores)
+                max_s = max(raw_scores)
+                
+                if max_s - min_s == 0:
+                    minmax_scores = [0.5 for _ in raw_scores]
+                else:
+                    minmax_scores = [
+                        (s - min_s) / (max_s - min_s)
+                        for s in raw_scores
+                        ]
+                sigmoid_scores = [safe_sigmoid(s) for s in raw_scores]
+                scores = [
+                    0.5 * s1 + 0.5 * s2
+                    for s1, s2 in zip(sigmoid_scores, minmax_scores)
+                    ]
             # ===============================
             # BUILD CONTEXT
             # ===============================
@@ -324,7 +353,13 @@ Question:
             alignment_score = cosine_similarity(
                 [answer_embedding],
                 [context_embedding]
-            )[0][0]
+                )[0][0]
+            # clamp between 0 and 1
+            
+            alignment_score = max(0, min(1, float(alignment_score)))
+
+            hybrid_scores = [float(score) for doc, score in hybrid_results]
+            hybrid_score_avg = sum(hybrid_scores) / len(hybrid_scores) if hybrid_scores else 0
             # ===============================
             # VERIFICATION
             # ===============================
@@ -396,14 +431,15 @@ Return JSON:
             faith = max(0, min(1, faith))
 
             # retrieval score
-            retrieval_score = sum(scores) / len(scores)
+            retrieval_score = sum(scores) / len(scores) if scores else 0
 
            # final confidence
             confidence = (
-               0.4 * retrieval_score +
-               0.3 * alignment_score +
-               0.3 * faith
-               )
+                0.3 * retrieval_score +     # reranker
+                0.2 * hybrid_score_avg +    # hybrid
+                0.3 * alignment_score +     # semantic match
+                0.2 * faith                # LLM verification
+                )
             return JsonResponse({
                 "answer": answer_text,
                 "confidence": float(confidence),
