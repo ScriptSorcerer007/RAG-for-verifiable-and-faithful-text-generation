@@ -52,3 +52,9 @@ Implemented:
 
 ---
 
+### 🔄 Phase 2 — Query Intelligence (In Progress)
+
+Planned:
+- Query Classification
+- Multi-Query Expansion
+- Adaptive Retrieval
