@@ -22,6 +22,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from core.rag.bm25_retriever import BM25Retriever
 from core.rag.hybrid_retriever import HybridRetriever
 from core.rag.reranker import ReRanker
+from core.rag.query_classifier import classify_query
+from core.rag.query_expander import expand_query
 
 # for link gerneration error for spaces in the documents
 from urllib.parse import quote
@@ -224,9 +226,23 @@ def ask_question(request):
 
             data = json.loads(request.body)
             query = data.get("question")
-
+        
             if not query:
                 return JsonResponse({"error": "No question provided"}, status=400)
+            
+            # Step 1: classify query
+            query_type = classify_query(query)
+            print("Query Type:", query_type)
+            
+            # Step 2: expand query
+            expanded_queries = expand_query(query)
+
+            print("\n--- EXPANDED QUERIES ---")
+            for q in expanded_queries:
+                print(q)
+                
+            # Step 3: combine queries
+            all_queries = [query] + expanded_queries[:3]
 
             if vectorstore is None:
                 load_vectorstore()
@@ -246,16 +262,40 @@ def ask_question(request):
             reranker = ReRanker()
 
             # run hybrid retrieval
-            hybrid_results = hybrid.retrieve(query, k=10)
+            all_results = []
+            
+            for q in all_queries:
+                results = hybrid.retrieve(q, k=5)
+                all_results.extend(results)
+
+            unique = {}
+            for doc, score in all_results:
+                key = doc.page_content
+                
+                if key not in unique or score > unique[key][1]:
+                    unique[key] = (doc, score)
+            merged_results = list(unique.values())
+
+            merged_results = sorted(
+                merged_results,
+                key=lambda x: x[1],
+                reverse=True
+                )
 
             # DEBUG
-            print("\n--- HYBRID RESULTS ---")
-            for doc, score in hybrid_results:
-                print("Hybrid Score:", score, "|", doc.page_content[:80])
+            print("\n--- MERGED RESULTS ---")
+            for doc, score in merged_results:
+                print("Score:", score, "|", doc.page_content[:80])
 
-            hybrid_docs = [doc for doc, score in hybrid_results]
+            hybrid_docs = [doc for doc, score in merged_results[:20]]
 
+            print("\n--- FINAL MERGED RESULTS COUNT ---")
+            print(len(merged_results))
             reranked_results = reranker.rerank(query, hybrid_docs, top_k=5)
+
+
+            print("\n--- TOTAL RETRIEVAL CALLS ---")
+            print(len(all_queries))
 
             print("\n--- RERANKED RESULTS ---")
             for doc, score in reranked_results:
@@ -358,7 +398,7 @@ Question:
             
             alignment_score = max(0, min(1, float(alignment_score)))
 
-            hybrid_scores = [float(score) for doc, score in hybrid_results]
+            hybrid_scores = [float(score) for doc, score in merged_results]
             hybrid_score_avg = sum(hybrid_scores) / len(hybrid_scores) if hybrid_scores else 0
             # ===============================
             # VERIFICATION
