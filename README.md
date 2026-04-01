@@ -52,9 +52,13 @@ Implemented:
 
 ---
 
-### 🔄 Phase 2 — Query Intelligence (In Progress)
+### ✅ Phase 2 — Query Intelligence
+- Query Classification (factual, conceptual, analytical, keyword)
+- Multi-Query Expansion using LLM
+- Multi-Query Retrieval Pipeline
+- Deduplication with score optimization
+- Result sorting and controlled reranking
 
-Planned:
-- Query Classification
-- Multi-Query Expansion
-- Adaptive Retrieval
+📄 Details: [Phase 2 Documentation](./PHASE_2_QUERY_INTELLIGENCE.md)
+
+---
