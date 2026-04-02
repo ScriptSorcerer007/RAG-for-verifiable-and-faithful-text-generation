@@ -59,6 +59,26 @@ Implemented:
 - Deduplication with score optimization
 - Result sorting and controlled reranking
 
-📄 Details: [Phase 2 Documentation](./PHASE_2_QUERY_INTELLIGENCE.md)
+📄 Detailed Documentation:  
+👉 [Phase 2 Documentation](./PHASE_2_QUERY_INTELLIGENCE.md)
 
 ---
+
+---
+
+### ✅ Phase 3 — Adaptive Retrieval
+- Dynamic weighting of FAISS (semantic) and BM25 (keyword) retrieval
+- Query-aware retrieval strategies (factual, conceptual, analytical, keyword)
+- Adaptive hybrid scoring (α × dense + β × BM25)
+- Noise filtering for improved result quality
+- Improved precision and contextual relevance
+
+📄 Detailed Documentation:  
+👉 [Phase 3 Documentation](./PHASE_3_ADAPTIVE_RETRIEVAL.md)
+
+---
+
+## 🔄 Phase 4 — Chat History (Upcoming)
+- Store user queries and responses
+- Persistent chat history per user
+- Context-aware conversation handling
