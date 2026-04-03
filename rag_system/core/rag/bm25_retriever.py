@@ -23,4 +23,4 @@ class BM25Retriever:
             reverse=True
         )
 
-        return [doc for doc, score in ranked[:k]]
+        return [(doc, score) for doc, score in ranked[:k]]

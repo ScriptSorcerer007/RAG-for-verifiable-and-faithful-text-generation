@@ -3,6 +3,7 @@ import json
 import fitz
 import requests
 import re
+import math
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -21,6 +22,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from core.rag.bm25_retriever import BM25Retriever
 from core.rag.hybrid_retriever import HybridRetriever
 from core.rag.reranker import ReRanker
+from core.rag.query_classifier import classify_query
+from core.rag.query_expander import expand_query
 
 # for link gerneration error for spaces in the documents
 from urllib.parse import quote
@@ -223,9 +226,23 @@ def ask_question(request):
 
             data = json.loads(request.body)
             query = data.get("question")
-
+        
             if not query:
                 return JsonResponse({"error": "No question provided"}, status=400)
+            
+            # Step 1: classify query
+            query_type = classify_query(query)
+            print("Query Type:", query_type)
+            
+            # Step 2: expand query
+            expanded_queries = expand_query(query)
+
+            print("\n--- EXPANDED QUERIES ---")
+            for q in expanded_queries:
+                print(q)
+                
+            # Step 3: combine queries
+            all_queries = [query] + expanded_queries[:3]
 
             if vectorstore is None:
                 load_vectorstore()
@@ -240,22 +257,81 @@ def ask_question(request):
             # HYBRID RETRIEVAL
             # ===============================
 
+            # initialize retrievers
             hybrid = HybridRetriever(vectorstore, bm25)
-            hybrid_results = hybrid.retrieve(query, k=10)
-
-            print("Hybrid results:", len(hybrid_results))
-
-            # ===============================
-            # RERANKING
-            # ===============================
-
             reranker = ReRanker()
 
-            reranked_docs = reranker.rerank(query, hybrid_results, top_k=5)
+            # run hybrid retrieval
+            all_results = []
+            
+            for q in all_queries:
+                results = hybrid.retrieve(q, k=5)
+                all_results.extend(results)
 
-            documents = reranked_docs
-            scores = [1.0] * len(documents)
+            unique = {}
+            for doc, score in all_results:
+                key = doc.page_content
+                
+                if key not in unique or score > unique[key][1]:
+                    unique[key] = (doc, score)
+            merged_results = list(unique.values())
 
+            merged_results = sorted(
+                merged_results,
+                key=lambda x: x[1],
+                reverse=True
+                )
+
+            # DEBUG
+            print("\n--- MERGED RESULTS ---")
+            for doc, score in merged_results:
+                print("Score:", score, "|", doc.page_content[:80])
+
+            hybrid_docs = [doc for doc, score in merged_results[:20]]
+
+            print("\n--- FINAL MERGED RESULTS COUNT ---")
+            print(len(merged_results))
+            reranked_results = reranker.rerank(query, hybrid_docs, top_k=5)
+
+
+            print("\n--- TOTAL RETRIEVAL CALLS ---")
+            print(len(all_queries))
+
+            print("\n--- RERANKED RESULTS ---")
+            for doc, score in reranked_results:
+                print("Rerank Score:", score, "|", doc.page_content[:80])
+
+            documents = [doc for doc, score in reranked_results]
+            raw_scores = [float(score) for doc, score in reranked_results]
+
+            # sigmoid for stability
+            def safe_sigmoid(x):
+                if x < -50:
+                    return 0.0
+                if x > 50:
+                    return 1.0
+                return 1 / (1 + math.exp(-x))
+            sigmoid_scores = [safe_sigmoid(s) for s in raw_scores]
+
+            # min-max for ranking sharpness
+            if not raw_scores:
+                scores = []
+            else:
+                min_s = min(raw_scores)
+                max_s = max(raw_scores)
+                
+                if max_s - min_s == 0:
+                    minmax_scores = [0.5 for _ in raw_scores]
+                else:
+                    minmax_scores = [
+                        (s - min_s) / (max_s - min_s)
+                        for s in raw_scores
+                        ]
+                sigmoid_scores = [safe_sigmoid(s) for s in raw_scores]
+                scores = [
+                    0.5 * s1 + 0.5 * s2
+                    for s1, s2 in zip(sigmoid_scores, minmax_scores)
+                    ]
             # ===============================
             # BUILD CONTEXT
             # ===============================
@@ -317,7 +393,13 @@ Question:
             alignment_score = cosine_similarity(
                 [answer_embedding],
                 [context_embedding]
-            )[0][0]
+                )[0][0]
+            # clamp between 0 and 1
+            
+            alignment_score = max(0, min(1, float(alignment_score)))
+
+            hybrid_scores = [float(score) for doc, score in merged_results]
+            hybrid_score_avg = sum(hybrid_scores) / len(hybrid_scores) if hybrid_scores else 0
             # ===============================
             # VERIFICATION
             # ===============================
@@ -373,7 +455,7 @@ Return JSON:
 
                 sources.append({
                     "rank": i + 1,
-                    "score": scores[i],
+                    "score": float(scores[i]),
                     "document": doc.metadata["source"],
                     "page": doc.metadata["page"],
                     "chunk": doc.page_content,
@@ -389,14 +471,15 @@ Return JSON:
             faith = max(0, min(1, faith))
 
             # retrieval score
-            retrieval_score = sum(scores) / len(scores)
+            retrieval_score = sum(scores) / len(scores) if scores else 0
 
            # final confidence
             confidence = (
-               0.4 * retrieval_score +
-               0.3 * alignment_score +
-               0.3 * faith
-               )
+                0.3 * retrieval_score +     # reranker
+                0.2 * hybrid_score_avg +    # hybrid
+                0.3 * alignment_score +     # semantic match
+                0.2 * faith                # LLM verification
+                )
             return JsonResponse({
                 "answer": answer_text,
                 "confidence": float(confidence),

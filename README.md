@@ -32,3 +32,53 @@ This project aims to address these issues by building a **verifiable RAG pipelin
 # Proposed Solution
 
 The system introduces a **multi-stage RAG architecture**:
+
+
+---
+
+# 📌 Project Progress
+
+### ✅ Phase 1 — Retrieval + Reranking Completed
+
+Implemented:
+- Hybrid Retrieval (FAISS + BM25)
+- Score Normalization & Fusion
+- Cross-Encoder Reranking
+- Context-aware Answer Generation
+- Verification & Confidence Scoring
+
+📄 Detailed Documentation:  
+👉 [Phase 1 Documentation](./PHASE_1_RAG_DOCUMENTATION.md)
+
+---
+
+### ✅ Phase 2 — Query Intelligence
+- Query Classification (factual, conceptual, analytical, keyword)
+- Multi-Query Expansion using LLM
+- Multi-Query Retrieval Pipeline
+- Deduplication with score optimization
+- Result sorting and controlled reranking
+
+📄 Detailed Documentation:  
+👉 [Phase 2 Documentation](./PHASE_2_QUERY_INTELLIGENCE.md)
+
+---
+
+---
+
+### ✅ Phase 3 — Adaptive Retrieval
+- Dynamic weighting of FAISS (semantic) and BM25 (keyword) retrieval
+- Query-aware retrieval strategies (factual, conceptual, analytical, keyword)
+- Adaptive hybrid scoring (α × dense + β × BM25)
+- Noise filtering for improved result quality
+- Improved precision and contextual relevance
+
+📄 Detailed Documentation:  
+👉 [Phase 3 Documentation](./PHASE_3_ADAPTIVE_RETRIEVAL.md)
+
+---
+
+## 🔄 Phase 4 — Chat History (Upcoming)
+- Store user queries and responses
+- Persistent chat history per user
+- Context-aware conversation handling
