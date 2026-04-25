@@ -78,6 +78,17 @@ Implemented:
 
 ---
 
+### ✅ Phase 5 — Contextual Memory Lite
+- Session-based short-term conversational memory
+- Remembers recent messages
+- Follow-up question understanding
+- Prompt memory injection for context-aware answers
+- Automatic memory trimming for efficiency
+- Clear memory endpoint for fresh conversations
+
+📄 Detailed Documentation:  
+👉 [Phase 5 Documentation](./PHASE_5_CONTEXTUAL_MEMORY.md)
+
 ## 🔄 Phase 4 — Chat History (Upcoming)
 - Store user queries and responses
 - Persistent chat history per user

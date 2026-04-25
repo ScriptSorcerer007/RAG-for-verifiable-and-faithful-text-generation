@@ -197,6 +197,37 @@ def upload_pdf(request):
     return JsonResponse({"error": "Upload using POST method."})
 
 
+MAX_MEMORY = 6
+
+def get_chat_memory(request):
+    return request.session.get("chat_memory", [])
+
+def save_chat_memory(request, memory):
+    request.session["chat_memory"] = memory
+    request.session.modified = True
+
+def add_to_memory(request, role, content):
+    memory = get_chat_memory(request)
+
+    memory.append({
+        "role": role,
+        "content": content
+    })
+
+    if len(memory) > MAX_MEMORY:
+        memory = memory[-MAX_MEMORY:]
+
+    save_chat_memory(request, memory)
+
+def format_memory(request):
+    memory = get_chat_memory(request)
+
+    lines = []
+    for msg in memory:
+        lines.append(f"{msg['role']}: {msg['content']}")
+
+    return "\n".join(lines)
+
 # ===============================
 # ASK QUESTION
 # ===============================
@@ -226,6 +257,7 @@ def ask_question(request):
 
             data = json.loads(request.body)
             query = data.get("question")
+            add_to_memory(request, "User", query)
         
             if not query:
                 return JsonResponse({"error": "No question provided"}, status=400)
@@ -346,9 +378,14 @@ def ask_question(request):
             # ===============================
             # GENERATOR
             # ===============================
-
+            memory_text = format_memory(request)
             prompt = f"""
 You are a helpful assistant.
+
+Use previous conversation when relevant.
+
+Previous Conversation:
+{memory_text}
 
 Use ONLY the provided evidence.
 
@@ -382,6 +419,7 @@ Question:
             result = response.json()
 
             answer_text = result["candidates"][0]["content"]["parts"][0]["text"]
+            add_to_memory(request, "Assistant", answer_text)
 
             # ===============================
             # ALIGNMENT SCORE
@@ -501,3 +539,7 @@ Return JSON:
 def logout_view(request):
     logout(request)
     return redirect('/')
+
+def clear_memory(request):
+    request.session["chat_memory"] = []
+    return JsonResponse({"message": "Memory cleared"})
