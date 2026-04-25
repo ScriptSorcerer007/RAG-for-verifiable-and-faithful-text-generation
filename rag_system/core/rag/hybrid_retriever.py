@@ -9,7 +9,7 @@ class HybridRetriever:
         max_s = max(scores)
         return [(s - min_s) / (max_s - min_s + 1e-8) for s in scores]
 
-    def retrieve(self, query, k=10):
+    def retrieve(self, query, k=10, alpha=0.5, beta=0.5):
 
         # =========================
         # 1. Dense Retrieval
@@ -45,17 +45,17 @@ class HybridRetriever:
         for doc, score in zip(dense_docs, dense_scores):
             score_dict[doc.page_content] = {
                 "doc": doc,
-                "score": 0.5 * score
+                "score": alpha * score
             }
 
         # BM25 contribution
         for doc, score in zip(bm25_docs, bm25_scores):
             if doc.page_content in score_dict:
-                score_dict[doc.page_content]["score"] += 0.5 * score
+                score_dict[doc.page_content]["score"] += beta * score
             else:
                 score_dict[doc.page_content] = {
                     "doc": doc,
-                    "score": 0.5 * score
+                    "score": beta * score
                 }
 
         # =========================
