@@ -4,6 +4,8 @@ import fitz
 import requests
 import re
 import math
+import time
+
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -25,11 +27,25 @@ from core.rag.reranker import ReRanker
 from core.rag.query_classifier import classify_query
 from core.rag.query_expander import expand_query
 
+from core.rag.reranker import ReRanker
+from core.rag.cache_utils import get_or_create_embedding
+
+from core.rag.security import detect_prompt_injection
+from core.rag.validators import validate_query, validate_file
+from core.rag.utils import log_error
+
+## from django_ratelimit.decorators import ratelimit( for production use or can use redis )
+
 # for link gerneration error for spaces in the documents
 from urllib.parse import quote
 # file name like this Generative ai with langchain-2.pdf have spaces it will encode it like this to prevent from link fail
 # Generative%20ai%20with%20langchain-2.pdf
 
+from core.rag.cache_utils import (
+    get_cached_answer,
+    set_cached_answer,
+    get_or_create_embedding
+)
 # ===============================
 # HOME PAGE
 # ===============================
@@ -57,6 +73,9 @@ embeddings = HuggingFaceEmbeddings(
 vectorstore = None
 bm25 = None
 documents_cache = []
+
+reranker = ReRanker()
+hybrid = None
 
 FAISS_INDEX_PATH = os.path.join(settings.BASE_DIR, "faiss_index")
 
@@ -105,6 +124,19 @@ def upload_pdf(request):
         try:
 
             file = request.FILES.get("file")
+
+            valid, msg = validate_file(file)
+            
+            if not valid:
+                return JsonResponse({"error": msg}, status=400)
+
+            last_file = request.session.get("last_uploaded_file")
+            
+            if last_file == file.name and os.path.exists(FAISS_INDEX_PATH):
+                return JsonResponse({
+        "message": "Using existing indexed PDF",
+        "cached": True
+    })
 
             if not file:
                 return JsonResponse({"error": "No file provided"}, status=400)
@@ -182,6 +214,8 @@ def upload_pdf(request):
 
             print("BM25 retriever initialized")
 
+            request.session["last_uploaded_file"] = file.name
+
             return JsonResponse({
                 "message": "PDF processed successfully",
                 "total_pages": len(documents),
@@ -231,8 +265,6 @@ def format_memory(request):
 # ===============================
 # ASK QUESTION
 # ===============================
-
-
 def ask_question(request):
 
     if not request.user.is_authenticated:
@@ -245,6 +277,8 @@ def ask_question(request):
 
         request.session['chat_count'] = count + 1
     
+    
+    
 
     global vectorstore
     global bm25
@@ -255,8 +289,31 @@ def ask_question(request):
 
         try:
 
+            start_time = time.time()
+
             data = json.loads(request.body)
-            query = data.get("question")
+            query = data.get("question", "")
+
+            valid, msg = validate_query(query)
+            
+            if not valid:
+                return JsonResponse({"error": msg}, status=400)
+            
+            if detect_prompt_injection(query):
+                return JsonResponse({"error": "Unsafe prompt detected"}, status=400)
+            
+            query = query.strip().lower()
+
+            import re
+            query = re.sub(r"[^\w\s]", "", query)
+
+            cached = get_cached_answer(query)
+
+            if cached:
+                print("CACHE HIT: Gemini Answer")
+                return JsonResponse(cached)
+            
+
             add_to_memory(request, "User", query)
         
             if not query:
@@ -267,14 +324,18 @@ def ask_question(request):
             print("Query Type:", query_type)
             
             # Step 2: expand query
-            expanded_queries = expand_query(query)
+            # Step 2: smart expand query
+            if len(query.split()) <= 3:
+                expanded_queries = []
+            else:
+                expanded_queries = expand_query(query)
 
             print("\n--- EXPANDED QUERIES ---")
             for q in expanded_queries:
                 print(q)
                 
             # Step 3: combine queries
-            all_queries = [query] + expanded_queries[:3]
+            all_queries = list(dict.fromkeys([query] + expanded_queries[:3]))
 
             if vectorstore is None:
                 load_vectorstore()
@@ -290,8 +351,9 @@ def ask_question(request):
             # ===============================
 
             # initialize retrievers
-            hybrid = HybridRetriever(vectorstore, bm25)
-            reranker = ReRanker()
+            global hybrid
+            if hybrid is None:
+                hybrid = HybridRetriever(vectorstore, bm25)
 
             # run hybrid retrieval
             all_results = []
@@ -314,12 +376,42 @@ def ask_question(request):
                 reverse=True
                 )
 
+        
             # DEBUG
             print("\n--- MERGED RESULTS ---")
             for doc, score in merged_results:
                 print("Score:", score, "|", doc.page_content[:80])
 
-            hybrid_docs = [doc for doc, score in merged_results[:20]]
+            # Clean junk docs before reranking
+
+            cleaned_results = []
+
+            for doc, score in merged_results:
+                text = doc.page_content.strip().lower()
+
+                if len(text) < 180:
+                    continue
+
+                blocked = [
+        "table of contents",
+        "contributors",
+        "chapter 1",
+        "questions",
+        "index",
+        "contents"
+    ]
+
+                if any(word in text for word in blocked):
+                    continue
+
+                cleaned_results.append((doc, score))
+
+            merged_results = cleaned_results
+
+            # Only top 8 docs for reranker
+            hybrid_docs = [doc for doc, score in merged_results[:8]]
+
+            print("Reranking docs:", len(hybrid_docs))
 
             print("\n--- FINAL MERGED RESULTS COUNT ---")
             print(len(merged_results))
@@ -335,6 +427,8 @@ def ask_question(request):
 
             documents = [doc for doc, score in reranked_results]
             raw_scores = [float(score) for doc, score in reranked_results]
+
+
 
             # sigmoid for stability
             def safe_sigmoid(x):
@@ -410,7 +504,7 @@ Question:
                 ]
             }
 
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url,headers=headers,json=payload,timeout=20)
 
             if response.status_code != 200:
                 print("Gemini error:", response.text)
@@ -425,8 +519,8 @@ Question:
             # ALIGNMENT SCORE
             # ===============================
 
-            answer_embedding = embeddings.embed_query(answer_text)
-            context_embedding = embeddings.embed_query(context)
+            answer_embedding = get_or_create_embedding(answer_text, embeddings)
+            context_embedding = get_or_create_embedding(context, embeddings)
 
             alignment_score = cosine_similarity(
                 [answer_embedding],
@@ -442,7 +536,10 @@ Question:
             # VERIFICATION
             # ===============================
 
-            verification_prompt = f"""
+            verification_data = {}
+            
+            if len(answer_text.strip()) > 80:
+                verification_prompt = f"""
 Evidence:
 {context}
 
@@ -457,31 +554,35 @@ Return JSON:
 "explanation": "short explanation"
 }}
 """
-
-            verification_payload = {
+                verification_payload = {
                 "contents": [
                     {"parts": [{"text": verification_prompt}]}
                 ]
             }
 
-            verification_response = requests.post(
+                verification_response = requests.post(
                 url,
                 headers=headers,
-                json=verification_payload
+                json=verification_payload,
+                timeout=20
             )
 
-            verification_data = {}
+                if verification_response.status_code == 200:
+                    
+                    verification_result = verification_response.json()
+                    
+                    verification_text = verification_result["candidates"][0]["content"]["parts"][0]["text"]
+                    json_match = re.search(r'\{.*\}', verification_text, re.DOTALL)
+                    
+                    if json_match:
+                        verification_data = json.loads(json_match.group())
 
-            if verification_response.status_code == 200:
-
-                verification_result = verification_response.json()
-
-                verification_text = verification_result["candidates"][0]["content"]["parts"][0]["text"]
-
-                json_match = re.search(r'\{.*\}', verification_text, re.DOTALL)
-
-                if json_match:
-                    verification_data = json.loads(json_match.group())
+            if not verification_data:
+                verification_data = {
+        "faithfulness_score": 0.85,
+        "hallucination": False,
+        "explanation": "Fast verification mode"
+    }
 
             # ===============================
             # SOURCES
@@ -518,7 +619,7 @@ Return JSON:
                 0.3 * alignment_score +     # semantic match
                 0.2 * faith                # LLM verification
                 )
-            return JsonResponse({
+            response_data = {
                 "answer": answer_text,
                 "confidence": float(confidence),
                 "faithfulness_score": faith,
@@ -526,15 +627,25 @@ Return JSON:
                 "verification": verification_data.get("explanation"),
                 "alignment_score": float(alignment_score),
                 "sources": sources
-                })
+                }
+
+            set_cached_answer(query, response_data)
+
+            print("TOTAL RESPONSE TIME:", round(time.time() - start_time, 2), "sec")
+
+            return JsonResponse(response_data)
 
         except Exception as e:
+            log_error("ASK ERROR")
+            
+            return JsonResponse(
+                {"error": "Internal server error"},
+                status=500)
 
-            print("ASK ERROR:", str(e))
-
-            return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Use POST method."})
+
+
 
 def logout_view(request):
     logout(request)

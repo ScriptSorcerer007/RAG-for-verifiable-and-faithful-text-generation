@@ -27,6 +27,8 @@ from core.rag.query_expander import expand_query
 
 # for link gerneration error for spaces in the documents
 from urllib.parse import quote
+
+from rag_system.core.rag import reranker
 # file name like this Generative ai with langchain-2.pdf have spaces it will encode it like this to prevent from link fail
 # Generative%20ai%20with%20langchain-2.pdf
 
@@ -261,8 +263,10 @@ def ask_question(request):
             # ===============================
 
             # initialize retrievers
-            hybrid = HybridRetriever(vectorstore, bm25)
-            reranker = ReRanker()
+            global hybrid
+
+            if hybrid is None:
+                hybrid = HybridRetriever(vectorstore, bm25)
 
             # run hybrid retrieval
             # ===============================
@@ -304,18 +308,29 @@ def ask_question(request):
                 reverse=True
                 )
             
-            merged_results = [
-                (doc, score)
-                for doc, score in merged_results
-                if len(doc.page_content.strip()) > 200 and "table of contents" not in doc.page_content.lower()
-                ]
+            cleaned_results = []
+            
+            for doc, score in merged_results:
+                text = doc.page_content.strip().lower()
+                if len(text) < 150:
+                    continue
+                if "table of contents" in text:
+                    continue
+
+                if "contributors" in text:
+                    continue
+
+                cleaned_results.append((doc, score))
+
+            merged_results = cleaned_results
+
 
             # DEBUG
             print("\n--- MERGED RESULTS ---")
             for doc, score in merged_results:
                 print("Score:", score, "|", doc.page_content[:80])
 
-            hybrid_docs = [doc for doc, score in merged_results[:20]]
+            hybrid_docs = [doc for doc, score in merged_results[:8]]
 
             print("\n--- FINAL MERGED RESULTS COUNT ---")
             print(len(merged_results))

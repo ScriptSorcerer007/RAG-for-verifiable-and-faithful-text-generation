@@ -8,9 +8,16 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ---------------- SECURITY ----------------
-SECRET_KEY = 'django-insecure-b*!*3k0mmg0)f$(zgwckvc38&ygz85@g14pg1_z7$tacsw*kb^'
-DEBUG = True
-ALLOWED_HOSTS = []
+#SECRET_KEY = 'django-insecure-b*!*3k0mmg0)f$(zgwckvc38&ygz85@g14pg1_z7$tacsw*kb^'
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+]
+
+DEBUG = os.getenv("DEBUG") == "True"
+
+print("SECRET_KEY LOADED:", bool(SECRET_KEY))
 
 # ---------------- INSTALLED APPS ----------------
 INSTALLED_APPS = [
@@ -23,6 +30,7 @@ INSTALLED_APPS = [
 
     'core',
     'users',
+    #"django_ratelimit",
 
     # 🔐 Auth + Social
     'django.contrib.sites',
@@ -56,6 +64,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    "core.rag.middleware.BlockBadRequests",
 ]
 
 SOCIALACCOUNT_PROVIDERS ={
@@ -120,7 +130,12 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # ---------------- SECURITY ----------------
-X_FRAME_OPTIONS = "SAMEORIGIN"
+
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+
+X_FRAME_OPTIONS = "DENY"
 
 # ---------------- GEMINI API ----------------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -152,3 +167,28 @@ CSRF_TRUSTED_ORIGINS = [
 
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
+
+SECURE_SSL_REDIRECT = False
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": BASE_DIR / "rag.log",
+        },
+    },
+    "root": {
+        "handlers": ["file"],
+        "level": "ERROR",
+    },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": BASE_DIR / "cache",
+    }
+}
