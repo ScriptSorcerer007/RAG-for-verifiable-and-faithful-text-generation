@@ -89,6 +89,36 @@ Implemented:
 📄 Detailed Documentation:  
 👉 [Phase 5 Documentation](./PHASE_5_CONTEXTUAL_MEMORY.md)
 
+
+### ✅ Phase 6 — Performance Optimization
+- Global model loading for faster requests
+- Answer + embedding caching system
+- Smart query expansion for short queries
+- Query deduplication for cleaner retrieval
+- Optimized reranking with limited candidates
+- Junk chunk filtering before reranking
+- Gemini API timeout + smart verification mode
+- Same PDF upload reuse (skip reindexing)
+- Runtime response time monitoring
+- Faster overall system performance
+
+📄 Detailed Documentation:  
+👉 [Phase 6 Documentation](./PHASE_6_PERFORMANCE_OPTIMIZATION.md)
+
+### ✅ Phase 7 — Security & Robustness
+- Prompt injection protection (blocks malicious instructions)
+- Input validation & sanitization (prevents XSS/injection attacks)
+- Session-based rate limiting (prevents abuse & spam)
+- Secure file upload handling (type & size validation)
+- Middleware-based request filtering (blocks suspicious agents)
+- Safe error handling (no internal traceback leaks)
+- Logging system for monitoring and debugging
+- Environment-based secrets management (.env)
+- Production-ready security settings (cookies, headers,)
+
+📄 Detailed Documentation:  
+👉 [Phase 7 Documentation](./PHASE_7_SECURITY_AND_ROBUSTNESS.md)
+
 ## 🔄 Phase 4 — Chat History (Upcoming)
 - Store user queries and responses
 - Persistent chat history per user
